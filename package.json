@@ -1,6 +1,6 @@
 {
   "name": "refract",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "main": "dist-electron/electron/main.js",
   "description": "Refract is a meeting notes app that uses AI to generate notes from your meetings.",
   "scripts": {
