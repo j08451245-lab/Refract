@@ -455,7 +455,10 @@ console.error = (...args: any[]) => {
   } catch { }
 };
 
-import { initializeIpcHandlers } from "./ipcHandlers"
+import { emitClaimVerdict, initializeIpcHandlers } from "./ipcHandlers"
+import { CLAIM_SCORE_THRESHOLD, ClaimThrottle, normalizeClaim } from "./services/claims/ClaimThrottle"
+import type { Claim } from "./services/claims/ClaimVerifierService"
+import { scoreClaim } from "../src/lib/claimScore.mjs"
 import { WindowHelper } from "./WindowHelper"
 import { SettingsWindowHelper } from "./SettingsWindowHelper"
 import { ModelSelectorWindowHelper } from "./ModelSelectorWindowHelper"
@@ -682,6 +685,13 @@ export class AppState {
   
   private _isQuitting: boolean = false;       // Se o app está fechando
   private _verboseLogging: boolean = false;    // Logging detalhado (depuração)
+
+  /**
+   * Live fact-check (Task 3): per-meeting throttle (1 check/20s, dedupe,
+   * 20 checks/meeting cap). Reset em startMeeting; o hook do mic-final
+   * consome via allow() e solta tudo em reset().
+   */
+  private _factCheckThrottle = new ClaimThrottle();
   
   /**
    * Taxa de amostragem do STT já aplicada.
@@ -1127,6 +1137,51 @@ export class AppState {
     const helper = this.getWindowHelper();
     helper.getLauncherWindow()?.webContents.send('native-audio-transcript', payload);
     helper.getOverlayWindow()?.webContents.send('native-audio-transcript', payload);
+  }
+
+  /**
+   * Live fact-check (Task 3): score one FINAL mic transcript and, over
+   * threshold + throttle, verify → push a single chip. Mic-final only —
+   * callers must gate on speaker 'user' + isFinal. Everything inside is
+   * guarded: transcription must never break on verifier/scorer error.
+   */
+  private maybeFactCheckMicClaim(rawText: string): void {
+    try {
+      if (SettingsManager.getInstance().get('factCheckEnabled') !== true) return;
+      const text = String(rawText ?? '').trim();
+      if (!text) return;
+      let score: number;
+      let kindText: string;
+      try {
+        const scored = scoreClaim(text) as { score: unknown; kind: unknown };
+        if (typeof scored?.score !== 'number' || scored.score < CLAIM_SCORE_THRESHOLD) return;
+        score = scored.score;
+        kindText = String(scored.kind ?? '');
+      } catch {
+        return; // scorer is pure — a throw means drift; drop silently
+      }
+      if (kindText !== 'number' && kindText !== 'date' && kindText !== 'entity' &&
+        kindText !== 'absolute' && kindText !== 'superlative') return;
+      if (!this._factCheckThrottle.allow(normalizeClaim(text))) return;
+      const claim: Claim = { text: text.slice(0, 500), score, kind: kindText as Claim['kind'] };
+      const generation = this._meetingGeneration;
+      void (async () => {
+        try {
+          const helper = this.processingHelper?.getLLMHelper?.();
+          const chatFn = helper?.chat?.bind(helper);
+          if (typeof chatFn !== 'function') return;
+          const { createLiveClaimVerifier } = require('./services/claims/tavilyClient') as typeof import('./services/claims/tavilyClient');
+          const verifier = createLiveClaimVerifier(chatFn);
+          const verdict = await verifier.verify(claim);
+          if (this._meetingGeneration !== generation) return; // stale meeting — drop
+          emitClaimVerdict(this.getMainWindow(), verdict);
+        } catch (err) {
+          console.warn('[Main] fact-check verify/push failed (non-fatal):', (err as Error)?.message ?? err);
+        }
+      })();
+    } catch (err) {
+      console.warn('[Main] fact-check hook failed (non-fatal):', (err as Error)?.message ?? err);
+    }
   }
 
   /**
@@ -1932,6 +1987,14 @@ export class AppState {
         if (trackerFeedAllowed) {
           this.knowledgeOrchestrator?.feedInterviewerUtterance?.(segment.text);
         }
+      }
+
+      // Live fact-check (Task 3): mic-final only (speaker 'user'). System
+      // audio ('interviewer') and interim segments never trigger. Fire-and-
+      // forget — maybeFactCheckMicClaim guards everything internally so a
+      // verifier failure can never break transcription.
+      if (speaker === 'user' && segment.isFinal) {
+        this.maybeFactCheckMicClaim(segment.text);
       }
     });
 
@@ -4058,6 +4121,8 @@ export class AppState {
     this._systemAudioRecoveryAttempts = 0;
     this._systemAudioConsecutiveFailures = 0;
     this._micRecoveryAttempts = 0;
+    // Live fact-check (Task 3): per-meeting throttle reset (20-check cap).
+    this._factCheckThrottle.reset();
     if (this._systemAudioRecoveryTimer) {
       clearTimeout(this._systemAudioRecoveryTimer);
       this._systemAudioRecoveryTimer = null;

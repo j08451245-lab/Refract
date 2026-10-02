@@ -1,5 +1,9 @@
 ﻿    # Changelog
 
+    ## [Unreleased]
+
+    - Live fact-check (mic): strong claims you say get auto-checked (Tavily + judge) with a discreet ✓/⚠/✗ chip; off by default, needs Tavily key (or degraded sourceless mode).
+
     ## [2.9.0] - 2026-09-30
 
     ### What's New

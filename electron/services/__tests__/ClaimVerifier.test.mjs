@@ -329,3 +329,63 @@ describe('tavilyClient adapter (stub node:http emulating Tavily /search)', () =>
     }
   });
 });
+
+// Task 3: ClaimThrottle — pure per-meeting gate (no network, no electron).
+// Throttle rules: max 1 check / 20s, dedupe normalized claims, cap 20/meeting.
+const throttleUrl = pathToFileURL(
+  path.resolve(__dirname, '../../../dist-electron/electron/services/claims/ClaimThrottle.js'),
+).href;
+
+describe('ClaimThrottle (20s cooldown, dedupe, 20/meeting cap)', () => {
+  let ClaimThrottle;
+  let normalizeClaim;
+  before(async () => {
+    const mod = await import(throttleUrl);
+    ClaimThrottle = mod.ClaimThrottle;
+    normalizeClaim = mod.normalizeClaim;
+    assert.ok(ClaimThrottle, 'throttle module must export ClaimThrottle');
+    assert.ok(normalizeClaim, 'throttle module must export normalizeClaim');
+  });
+
+  test('normalize lowercases + collapses whitespace', () => {
+    assert.equal(normalizeClaim('  LATENCY   Fell  '), 'latency fell');
+  });
+
+  test('first claim allowed, repeat blocked (dedupe)', () => {
+    const t = new ClaimThrottle();
+    const key = normalizeClaim('Latency fell to 120ms last quarter');
+    assert.equal(t.allow(key, 100000), true);
+    assert.equal(t.allow(key, 100000 + 30000), false, 'same claim never re-checks');
+  });
+
+  test('dedupe is normalization-insensitive', () => {
+    const t = new ClaimThrottle();
+    assert.equal(t.allow(normalizeClaim('Latency fell to 120ms'), 100000), true);
+    assert.equal(t.allow(normalizeClaim('  LATENCY  fell to 120MS '), 130000), false);
+  });
+
+  test('distinct claim within 20s blocked, at 20s allowed (cooldown)', () => {
+    const t = new ClaimThrottle();
+    assert.equal(t.allow(normalizeClaim('claim alpha here now'), 200000), true);
+    assert.equal(t.allow(normalizeClaim('claim beta here now'), 200000 + 19999), false);
+    assert.equal(t.allow(normalizeClaim('claim beta here now'), 200000 + 20000), true);
+  });
+
+  test('empty key never allowed', () => {
+    const t = new ClaimThrottle();
+    assert.equal(t.allow('', 300000), false);
+  });
+
+  test('cap: 20 checks/meeting, 21st blocked; reset restores', () => {
+    const t = new ClaimThrottle();
+    let now = 400000;
+    for (let i = 0; i < 20; i += 1) {
+      now += 21000;
+      assert.equal(t.allow(normalizeClaim(`distinct meeting claim number ${i}`), now), true, `check ${i + 1} must pass`);
+    }
+    now += 21000;
+    assert.equal(t.allow(normalizeClaim('one more claim here'), now), false, '21st check blocked');
+    t.reset();
+    assert.equal(t.allow(normalizeClaim('after reset claim here'), now + 21000), true);
+  });
+});
