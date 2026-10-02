@@ -330,6 +330,9 @@ export class OpencodeService {
       if (failure !== null) throw new OpenCodeError(`opencode session error: ${failure}`);
       if (!done) throw new OpenCodeError('event stream closed before completion');
       // Deltas are authoritative; a snapshot covers parts that completed without deltas.
+      // NOTE (intentional): a completed session with zero text resolves "" rather
+      // than throwing — empty answers are valid (e.g. noReply-style turns); the
+      // caller decides how to surface them.
       return partOrder
         .map((key) => {
           const chunks = partDeltas.get(key);

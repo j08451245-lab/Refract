@@ -262,6 +262,26 @@ describe('opencodeStreaming', () => {
         (e) => e instanceof mod.OpenCodeError && /prompt_async failed: 404/.test(e.message),
       );
       assert.equal(state.deleted, 'yes');
+      await tick(100);
+      assert.equal(state.sseClosed, true);
+    } finally {
+      await closeStub(server);
+    }
+  });
+
+  test('stream timeout aborts, deletes session, and surfaces TimeoutError', async () => {
+    const { server, state, url } = await startStreamStub('hang');
+    const mod = await import(svcUrl(__dirname));
+    const svc = new mod.OpencodeService({ baseUrl: url, password: 'pw' });
+    try {
+      const seen = [];
+      await assert.rejects(
+        svc.stream('hi', 'opencode/stub/model', { onToken: (t) => seen.push(t), timeoutMs: 50 }),
+        (e) => e != null && e.name === 'TimeoutError',
+      );
+      assert.equal(state.deleted, 'yes');
+      await tick(100);
+      assert.equal(state.sseClosed, true);
     } finally {
       await closeStub(server);
     }
