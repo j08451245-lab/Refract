@@ -1,8 +1,8 @@
-const NUM_RE = /\b\d+(?:[.,]\d+)?\s*(?:ms|s|%|x|mil|milh|bilh|k|m|gb|mb|usd|r\$|dólares|dollar|million|billion|percent|anos?|years?)\b/i;
-const DATE_RE = /\b(19|20)\d{2}\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\b/i;
-const ENTITY_RE = /\b[A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)+\b/;
-const ABS_RE = /\b(sempre|nunca|jamais|todo(?:s)?|toda(?:s)?|nenhum(?:a)?|único|única|only|never|always|every|none)\b/i;
-const SUP_RE = /\b(maior|menor|melhor|pior|primeiro|último|único|biggest|smallest|best|worst|first|last|only)\b/i;
+const NUM_RE = /(?<![\p{L}\p{N}_])\d+(?:[.,]\d+)?\s*(?:ms|s|%|x|mil|milh|bilh|k|m|gb|mb|usd|r\$|dólares|dollar|million|billion|percent|anos?|years?)(?![\p{L}\p{N}_])/iu;
+const DATE_RE = /(?<![\p{L}\p{N}_])(?:(?:19|20)\d{2}|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|(?:janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|january|february|march|april|may|june|july|august|september|october|november|december))(?![\p{L}\p{N}_])/iu;
+const ENTITY_RE = /(?<![\p{L}\p{N}_])[A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)+(?![\p{L}\p{N}_])/u;
+const ABS_RE = /(?<![\p{L}\p{N}_])(?:sempre|nunca|jamais|todo(?:s)?|toda(?:s)?|nenhum(?:a)?|único|única|only|never|always|every|none)(?![\p{L}\p{N}_])/iu;
+const SUP_RE = /(?<![\p{L}\p{N}_])(?:maior|menor|melhor|pior|primeiro|último|único|biggest|smallest|best|worst|first|last|only)(?![\p{L}\p{N}_])/iu;
 
 export function scoreClaim(text) {
   const t = String(text ?? '');
