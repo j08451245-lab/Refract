@@ -2,6 +2,9 @@ import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import path from 'node:path';
+import os from 'node:os';
+import fs from 'node:fs';
+import Module from 'node:module';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -11,6 +14,29 @@ const svcUrl = pathToFileURL(
 const wireUrl = pathToFileURL(
   path.resolve(__dirname, '../../../dist-electron/electron/services/claims/tavilyClient.js'),
 ).href;
+
+// Neutralize electron so importing the bundled tavilyClient (which top-level
+// imports CredentialsManager → electron app.getPath) is harmless under plain
+// `node --test`. Mirrors PhoneMirrorExtensionV2.test.mjs pattern.
+const tmpUserData = fs.mkdtempSync(path.join(os.tmpdir(), 'refract-fc-test-'));
+const electronStub = {
+  app: {
+    getPath: () => tmpUserData,
+    isReady: () => true,
+    whenReady: () => Promise.resolve(),
+    on: () => {},
+  },
+  safeStorage: {
+    isEncryptionAvailable: () => false,
+    encryptString: (s) => Buffer.from(String(s), 'utf8'),
+    decryptString: (b) => Buffer.from(b).toString('utf8'),
+  },
+};
+const origLoad = Module._load;
+Module._load = function (request, parent, isMain) {
+  if (request === 'electron') return electronStub;
+  return origLoad.call(this, request, parent, isMain);
+};
 
 // Stub routes emulating Tavily POST /search (exact paths asserted below).
 const SUPPORT_URL = 'https://example.com/latency-report';
@@ -116,6 +142,16 @@ describe('ClaimVerifierService (injectable deps, no network)', () => {
     await assert.rejects(() => svc.verify(makeClaim(), { timeoutMs: 50 }), ClaimVerifierError);
     assert.ok(Date.now() - started < 2000, 'must reject fast, never hang');
   });
+
+  test('NONE url never falls back to first evidence (url null)', async () => {
+    const svc = new ClaimVerifierService({
+      tavilySearch: async () => [{ title: 'Latency report', url: SUPPORT_URL, content: 'latency fell to 120ms' }],
+      judge: async () => 'Verdict: SUPPORTED\nSummary: Judge says none.\nURL: NONE\nConfidence: 0.8',
+      hasKey: () => true,
+    });
+    const v = await svc.verify(makeClaim());
+    assert.equal(v.url, null, 'NONE must map to null, never first-evidence fallback');
+  });
 });
 
 describe('tavilyClient adapter (stub node:http emulating Tavily /search)', () => {
@@ -140,6 +176,20 @@ describe('tavilyClient adapter (stub node:http emulating Tavily /search)', () =>
             res.end(JSON.stringify({ detail: { error: 'Unauthorized' } }));
             return;
           }
+          if (mode === 'slow') {
+            // Hold open ~1.2s so an abort (20ms) must win if forwarding works.
+            // Without forwarding the SDK would wait for this response (resolve,
+            // not reject) or for its 9s timeout — never an AbortError.
+            setTimeout(() => {
+              try {
+                if (!res.writableEnded && !res.destroyed) {
+                  res.writeHead(200, { 'content-type': 'application/json' });
+                  res.end(JSON.stringify({ query: 'q', responseTime: 0.1, images: [], results: [{ title: 'Latency report', url: SUPPORT_URL, content: 'latency fell to 120ms', score: 0.9 }], requestId: 'stub-1' }));
+                }
+              } catch {}
+            }, 1200);
+            return;
+          }
           const results = mode === 'empty' ? [] : [
             { title: 'Latency report', url: SUPPORT_URL, content: 'latency fell to 120ms', score: 0.9 },
           ];
@@ -157,6 +207,8 @@ describe('tavilyClient adapter (stub node:http emulating Tavily /search)', () =>
 
   after(async () => {
     await new Promise((resolve) => server.close(resolve));
+    Module._load = origLoad;
+    try { fs.rmSync(tmpUserData, { recursive: true, force: true }); } catch {}
   });
 
   test('adapter maps Tavily results, sends Bearer key, never 0-hit on key path', async () => {
@@ -185,5 +237,95 @@ describe('tavilyClient adapter (stub node:http emulating Tavily /search)', () =>
     mode = 'empty';
     const search = createTavilySearch({ apiKey: 'tvly-test-key', baseUrl });
     assert.deepEqual(await search('anything'), []);
+  });
+
+  test('createJudge binds skipModeInjection=true (5th arg, LLMHelper.chat order)', async () => {
+    const { createJudge } = await import(wireUrl);
+    let seenArgs = null;
+    const fakeChat = async (...args) => {
+      seenArgs = args;
+      return 'Verdict: SUPPORTED\nSummary: ok.\nURL: NONE\nConfidence: 0.5';
+    };
+    const judge = createJudge(fakeChat);
+    await judge('hello prompt');
+    assert.ok(Array.isArray(seenArgs), 'chat must be called');
+    assert.equal(seenArgs.length, 5, 'chat(prompt, undefined, undefined, undefined, true)');
+    assert.equal(seenArgs[0], 'hello prompt');
+    assert.equal(seenArgs[1], undefined);
+    assert.equal(seenArgs[2], undefined);
+    assert.equal(seenArgs[3], undefined);
+    assert.equal(seenArgs[4], true);
+  });
+
+  test('adapter pre-aborted signal rejects without network hit', async () => {
+    const { createTavilySearch } = await import(wireUrl);
+    mode = 'support';
+    hitCount = 0;
+    const search = createTavilySearch({ apiKey: 'tvly-test-key', baseUrl });
+    const ctrl = new AbortController();
+    ctrl.abort();
+    await assert.rejects(() => search('anything', { signal: ctrl.signal }), (e) => e && e.name === 'AbortError');
+    assert.equal(hitCount, 0, 'pre-aborted must not hit the network');
+  });
+
+  test('adapter abort mid-search rejects promptly (AbortError)', async () => {
+    const { createTavilySearch } = await import(wireUrl);
+    mode = 'slow';
+    const search = createTavilySearch({ apiKey: 'tvly-test-key', baseUrl });
+    const ctrl = new AbortController();
+    const started = Date.now();
+    const p = search('latency claim slow', { signal: ctrl.signal });
+    setTimeout(() => ctrl.abort(), 20);
+    await assert.rejects(p, (e) => e && e.name === 'AbortError');
+    const elapsed = Date.now() - started;
+    assert.ok(elapsed < 2000, `must reject promptly, took ${elapsed}ms (SDK timeout is 9s, slow response 1.2s)`);
+    mode = 'support';
+  });
+
+  test('judge abort mid-call rejects promptly (AbortError)', async () => {
+    const { createJudge } = await import(wireUrl);
+    const hangingChat = () => new Promise(() => {});
+    const judge = createJudge(hangingChat);
+    const ctrl = new AbortController();
+    const p = judge('prompt', { signal: ctrl.signal });
+    setTimeout(() => ctrl.abort(), 20);
+    const started = Date.now();
+    await assert.rejects(p, (e) => e && e.name === 'AbortError');
+    assert.ok(Date.now() - started < 2000, 'judge abort must reject promptly');
+  });
+
+  test('createLiveClaimVerifier wires key→auth, forced-format prompt, sourced verdict', async () => {
+    const wireMod = await import(wireUrl);
+    const { createLiveClaimVerifier } = wireMod;
+    assert.ok(createLiveClaimVerifier, 'must export createLiveClaimVerifier');
+    const CM = wireMod.CredentialsManager;
+    assert.ok(CM && typeof CM.getInstance === 'function', 'tavilyClient must expose bundled CredentialsManager for faking');
+    const origGetInstance = CM.getInstance;
+    CM.getInstance = () => ({ getTavilyApiKey: () => 'k' });
+    try {
+      mode = 'support';
+      hitCount = 0;
+      lastAuth = '';
+      let seenPrompt = '';
+      let seenChatArgs = null;
+      const fakeChat = async (...args) => {
+        seenChatArgs = args;
+        seenPrompt = String(args[0] ?? '');
+        return 'Verdict: SUPPORTED\nSummary: Evidence confirms the latency drop.\nURL: ' + SUPPORT_URL + '\nConfidence: 0.9';
+      };
+      const verifier = createLiveClaimVerifier(fakeChat, { baseUrl });
+      const v = await verifier.verify({ text: 'latency fell to 120ms last quarter', score: 0.9, kind: 'number' });
+      assert.equal(lastAuth, 'Bearer k', 'Tavily key must flow to search Authorization header');
+      assert.equal(hitCount, 1, 'live path must hit Tavily search exactly once');
+      assert.ok(seenChatArgs && seenChatArgs.length === 5 && seenChatArgs[4] === true, 'judge must bind skipModeInjection=true');
+      assert.match(seenPrompt, /EXACTLY/, 'judge must receive forced-format prompt');
+      assert.match(seenPrompt, /SUPPORTED\|REFUTED\|UNCERTAIN/, 'prompt must pin verdict tokens');
+      assert.equal(v.verdict, 'confirmed');
+      assert.equal(v.sourced, true, 'live path with evidence must be sourced');
+      assert.equal(v.url, SUPPORT_URL);
+    } finally {
+      CM.getInstance = origGetInstance;
+      mode = 'support';
+    }
   });
 });

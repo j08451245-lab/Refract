@@ -15,7 +15,7 @@
 export interface Claim {
   text: string;
   score: number;
-  kind: string;
+  kind: 'number' | 'date' | 'entity' | 'absolute' | 'superlative';
 }
 
 export interface Verdict {
@@ -92,7 +92,7 @@ function parseJudgeOutput(raw: string, evidence: ClaimEvidence[]): { verdict: Ve
   const token = text.match(/\b(SUPPORTED|REFUTED|UNCERTAIN)\b/i)?.[1]?.toUpperCase();
   const verdict: Verdict['verdict'] = token === 'SUPPORTED' ? 'confirmed' : token === 'REFUTED' ? 'refuted' : 'doubtful';
   if (!token && text.length === 0) {
-    return { verdict: 'doubtful', summary: 'Judge returned no usable verdict.', url: evidence[0]?.url ?? null, confidence: 0.3 };
+    return { verdict: 'doubtful', summary: 'Judge returned no usable verdict.', url: null, confidence: 0.3 };
   }
   const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
   const summaryLine = lines.find((l) => /^summary\s*:/i.test(l));
@@ -107,7 +107,7 @@ function parseJudgeOutput(raw: string, evidence: ClaimEvidence[]): { verdict: Ve
   const url = candidate.toUpperCase() !== 'NONE' && isHttpUrl(candidate) &&
     (evidence.length === 0 || evidence.some((e) => e.url === candidate))
     ? candidate
-    : (evidence[0]?.url ?? null);
+    : null;
   const confMatch = text.match(/confidence\s*:\s*(0?\.\d+|1(?:\.0+)?|0|1)\b/i)?.[1];
   const confidence = clampConfidence(confMatch !== undefined ? Number(confMatch) : NaN, verdict === 'doubtful' ? 0.4 : 0.7);
   return { verdict, summary, url, confidence };
