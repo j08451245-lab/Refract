@@ -998,7 +998,7 @@ export class LLMHelper {
     return `opencode/${models[0].provider}/${models[0].model}`;
   }
 
-  private async generateWithOpencode(userContent: string, modelRef: string, systemPrompt?: string): Promise<string> {
+  private async generateWithOpencode(userContent: string, modelRef: string, systemPrompt?: string, onToken?: (text: string) => void): Promise<string> {
     const { isIntelligenceFlagEnabled } = require('./intelligence/intelligenceFlags') as typeof import('./intelligence/intelligenceFlags');
     if (!isIntelligenceFlagEnabled('opencodeIntegration')) {
       throw new Error('OpenCode integration is disabled. Enable it in Settings > AI Providers.');
@@ -1009,6 +1009,16 @@ export class LLMHelper {
     const svc = new OpencodeService({ baseUrl: mgr.getBaseUrl(), password: this.readOpencodePassword() });
     const prompt = systemPrompt ? `${systemPrompt}\n\n${userContent}` : userContent;
     const ref = (!modelRef || modelRef === 'opencode') ? await this.defaultOpencodeModel() : modelRef;
+    if (onToken) {
+      try {
+        return await svc.stream(prompt, ref, { onToken });
+      } catch (err) {
+        if (err instanceof OpenCodeError) {
+          return svc.chat(prompt, ref);
+        }
+        throw err;
+      }
+    }
     return svc.chat(prompt, ref);
   }
 
