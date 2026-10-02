@@ -20,6 +20,7 @@ import { formatEnvelopeForPrompt } from './services/browser-context/formatEnvelo
 import { BrowserMetadataClassifierService } from './services/browser-context/BrowserMetadataClassifierService';
 import type { BrowserContextCategory, SafeWebsiteMetadata } from './services/browser-context/types';
 import { SettingsManager } from './services/SettingsManager';
+import type { Verdict as ClaimVerdict } from './services/claims/ClaimVerifierService';
 import { RERANK_CANDIDATE_POOL, resolveRerankPoolSize } from './services/modes/rerankPool';
 import { buildRerankProbe } from './services/reranking/rerankProbe';
 import { ProviderStatusRegistry } from './services/ProviderStatusRegistry';
@@ -289,6 +290,16 @@ function assertAppSender(event: any, channel: string): void {
   if (!win || win.isDestroyed()) {
     throw new Error(`forbidden sender for channel ${channel}`);
   }
+}
+
+// Live fact-check (Task 2): push-only verdict delivery. Mirrors the
+// broadcastCredentialsChanged pattern below â€” best-effort send, never throws,
+// no listener channel needed (renderer subscribes via onClaimVerdict).
+export function emitClaimVerdict(win: BrowserWindow | null | undefined, verdict: ClaimVerdict): void {
+  try {
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send('claim:verdict', verdict);
+  } catch { /* window closing â€” push is best-effort */ }
 }
 
 export function initializeIpcHandlers(appState: AppState): void {
@@ -7529,6 +7540,21 @@ export function initializeIpcHandlers(appState: AppState): void {
         }
       });
     } catch { /* broadcasting is best-effort */ }
+    return { success: true };
+  });
+
+  // Live fact-check (Task 2): opt-in flag. Default OFF â€” only true after the
+  // user explicitly enables it. NOTE: SettingsManager.set returns void, so no
+  // truthiness check on the write (unlike the R-24 degraded-store pattern).
+  safeHandle('claim:get-enabled', async () => {
+    return { enabled: SettingsManager.getInstance().get('factCheckEnabled') === true };
+  });
+
+  safeHandle('claim:set-enabled', async (_, on: boolean) => {
+    if (typeof on !== 'boolean') {
+      return { success: false, error: 'invalid_type' };
+    }
+    SettingsManager.getInstance().set('factCheckEnabled', on);
     return { success: true };
   });
 

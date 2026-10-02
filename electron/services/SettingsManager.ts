@@ -85,6 +85,10 @@ export interface AppSettings {
     // cases em a sandbox após o answer). Default OEm define falso para desabilitar at
     // runtime sem a redeploy. Também overridable por env REFRACT_CODE_VERIFY=off.
     codeVerificationEnabled?: boolean;
+    // Live fact-check (mic): opt-in flag for auto-checking strong claims.
+    // Default OFF (undefined reads as false). Without a Tavily key the verifier
+    // runs in degraded judge-only mode (sourced:false, confidence capped).
+    factCheckEnabled?: boolean;
     // Screen-understanding routing — VISION-ONLY architecture (legacy OCR removed de runtime).
     //   vision_first   — Default. Envia screenshot para o primeiro disponível vision-capable pprovedor cascade através alternativa chain em failure.
     //   vision_only    — Stricter: exigir vision-capable pprovedor Não text-only provedor fallback. Não OCR fallback.
