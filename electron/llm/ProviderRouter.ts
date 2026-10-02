@@ -181,7 +181,7 @@ export function routeLLMProviders(options: ProviderRouteOptions): ProviderAttemp
         model: models.opencode,
         available: Boolean(availability.hasOpencode),
         unavailableReason: 'missing_config',
-        supports: ['chat'],
+        supports: ['chat', 'stream_chat'],
     };
 
     const opencodeZen: ProviderSpec = {
