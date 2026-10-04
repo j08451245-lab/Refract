@@ -244,6 +244,7 @@ import PresenceCoachHUD from './PresenceCoachHUD';
 import ResizeToggle from './ui/ResizeToggle';
 import RollingTranscript from './ui/RollingTranscript';
 import TopPill from './ui/TopPill';
+import { FactCheckChipHost } from './FactCheckChip';
 
 // PERF: arrays de plugins elevados. ReactMarkdown recebe `remarkPlugins` e
 // `rehypePlugins` como novos arrays literais se definidos inline no local de
@@ -6122,6 +6123,12 @@ Provide only the answer, nothing else.`;
                   </div>
                 </div>
               )}
+
+              {/* Live fact-check (Task 3) — single dismissible verdict chip.
+                  Self-subscribes to claim:verdict; renders nothing until the
+                  first verdict arrives. Placed above the action bar so it
+                  never shifts with content below. */}
+              <FactCheckChipHost />
 
               {/* Fase 3 — Linha de cards de ação dinâmica (gatilhos ao vivo estilo Refract).
                                 Appears between status pills and rolling transcript so users see

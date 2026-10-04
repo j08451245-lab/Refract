@@ -353,6 +353,13 @@ export interface ElectronAPI {
   // Modo de Texto Rápido Groq
   getGroqFastTextMode: () => Promise<{ enabled: boolean }>;
   setGroqFastTextMode: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
+
+  // Live fact-check (mic): opt-in flag + push-only verdict channel.
+  // Structural mirror of electron/services/claims/ClaimVerifierService.ts Verdict
+  // (renderer never imports from electron/* directly).
+  getFactCheckEnabled: () => Promise<{ enabled: boolean }>;
+  setFactCheckEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
+  onClaimVerdict: (callback: (verdict: ClaimVerdict) => void) => () => void;
   getCodexCliConfig: () => Promise<{ enabled: boolean; path: string; model: string; fastModel: string; timeoutMs: number; sandboxMode: string; serviceTier?: string; modelReasoningEffort?: string }>;
   setCodexCliConfig: (config: { enabled: boolean; path: string; model: string; fastModel: string; timeoutMs: number; sandboxMode?: string; serviceTier?: string; modelReasoningEffort?: string }) => Promise<{ success: boolean; error?: string; config?: { enabled: boolean; path: string; model: string; fastModel: string; timeoutMs: number; sandboxMode: string; serviceTier?: string; modelReasoningEffort?: string } }>;
   testCodexCli: (config?: { enabled?: boolean; path?: string; model?: string; fastModel?: string; timeoutMs?: number; sandboxMode?: string; serviceTier?: string; modelReasoningEffort?: string }) => Promise<{ success: boolean; error?: string; resolvedPath?: string; config?: { enabled: boolean; path: string; model: string; fastModel: string; timeoutMs: number; sandboxMode: string; serviceTier?: string; modelReasoningEffort?: string } }>;
@@ -844,6 +851,16 @@ export interface BrowserContextSettings {
   autoDetectJobDescriptions: boolean;
   autoDetectDeveloperDocs: boolean;
   experimentalFullPageCapture: boolean;
+}
+
+/** Live fact-check verdict (structural mirror of the main-process Verdict). */
+export interface ClaimVerdict {
+  claim: string;
+  verdict: 'confirmed' | 'doubtful' | 'refuted';
+  summary: string;
+  url: string | null;
+  confidence: number;
+  sourced: boolean;
 }
 
 export interface SkillSummary {

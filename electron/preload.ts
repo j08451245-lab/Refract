@@ -92,6 +92,15 @@ type DirectAssistEvent =
   | { type: 'cancel'; requestId: string; sequence: number };
 
 // Types for the exposed Electron API
+// Live fact-check verdict (mirrors electron/services/claims/ClaimVerifierService.ts Verdict).
+interface ClaimVerdict {
+  claim: string;
+  verdict: 'confirmed' | 'doubtful' | 'refuted';
+  summary: string;
+  url: string | null;
+  confidence: number;
+  sourced: boolean;
+}
 interface ElectronAPI {
   updateContentDimensions: (dimensions: { width: number; height: number }) => Promise<void>;
   updateContentDimensionsCentered: (dimensions: {
@@ -1066,6 +1075,10 @@ interface ElectronAPI {
   onDirectAssistEnabledChanged: (callback: (enabled: boolean) => void) => () => void;
   getCodeVerification: () => Promise<boolean>;
   setCodeVerification: (enabled: boolean) => Promise<{ success: boolean }>;
+  // Live fact-check (Task 2): opt-in flag + push-only verdict channel.
+  getFactCheckEnabled: () => Promise<{ enabled: boolean }>;
+  setFactCheckEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
+  onClaimVerdict: (callback: (verdict: ClaimVerdict) => void) => () => void;
   getMeetingRetention: () => Promise<'forever' | '7d' | '30d' | 'never'>;
   setMeetingRetention: (
     retention: 'forever' | '7d' | '30d' | 'never',
@@ -2913,6 +2926,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getCodeVerification: () => ipcRenderer.invoke('get-code-verification'),
   setCodeVerification: (enabled: boolean) => ipcRenderer.invoke('set-code-verification', enabled),
+  // Live fact-check (Task 2): opt-in flag + push-only verdict channel.
+  getFactCheckEnabled: () => ipcRenderer.invoke('claim:get-enabled'),
+  setFactCheckEnabled: (enabled: boolean) => ipcRenderer.invoke('claim:set-enabled', enabled),
+  onClaimVerdict: (callback: (verdict: ClaimVerdict) => void) => {
+    const subscription = (_: Electron.IpcRendererEvent, verdict: ClaimVerdict) => callback(verdict);
+    ipcRenderer.on('claim:verdict', subscription);
+    return () => {
+      ipcRenderer.removeListener('claim:verdict', subscription);
+    };
+  },
   getMeetingRetention: () => ipcRenderer.invoke('get-meeting-retention'),
   setMeetingRetention: (retention: 'forever' | '7d' | '30d' | 'never') =>
     ipcRenderer.invoke('set-meeting-retention', retention),
