@@ -24,6 +24,7 @@ const VERDICT_STYLE: Record<ClaimVerdict['verdict'], { glyph: string; dot: strin
 };
 
 function openSource(url: string): void {
+  if (!/^https:\/\//i.test(url)) return;
   try {
     window.electronAPI?.openExternal?.(url);
   } catch {
@@ -77,7 +78,7 @@ export const FactCheckChip: React.FC<FactCheckChipProps> = ({ verdict, onDismiss
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 p-1 rounded-full text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
+        className="shrink-0 p-1 rounded-full text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-within:opacity-100"
         title="Dismiss"
         aria-label="Dismiss fact check"
       >

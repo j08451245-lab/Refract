@@ -545,6 +545,12 @@ import { OpencodeManager } from './services/OpencodeManager'
 import { decideToggle, decideDockTransition } from './services/toggleStateReducer'
 
 /**
+ * Live fact-check (Task 3): doubtful verdicts below this confidence are
+ * dropped in the mic hook so the overlay never nags on near-guesses.
+ */
+const FACT_CHECK_DOUBTFUL_MIN_CONFIDENCE = 0.4;
+
+/**
  * ============================================================
  * CLASSE AppState — O GERENCIADOR CENTRAL DO APLICATIVO
  * ============================================================
@@ -1173,6 +1179,10 @@ export class AppState {
           const { createLiveClaimVerifier } = require('./services/claims/tavilyClient') as typeof import('./services/claims/tavilyClient');
           const verifier = createLiveClaimVerifier(chatFn);
           const verdict = await verifier.verify(claim);
+          if (verdict.verdict === 'doubtful' && verdict.confidence < FACT_CHECK_DOUBTFUL_MIN_CONFIDENCE) {
+            console.log(`[Main] fact-check doubtful below confidence gate (${verdict.confidence}) — dropped`);
+            return;
+          }
           if (this._meetingGeneration !== generation) return; // stale meeting — drop
           emitClaimVerdict(this.getMainWindow(), verdict);
         } catch (err) {

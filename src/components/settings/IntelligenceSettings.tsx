@@ -286,6 +286,11 @@ export const IntelligenceSettings: React.FC = () => {
   const [showDev, setShowDev] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [masterBusy, setMasterBusy] = useState(false);
+  // Live fact-check (mic): opt-in flag via claim:get-enabled / claim:set-enabled
+  // (NOT an intelligence flag). Mirrors the FlagRowView Toggle pattern.
+  const [factCheckEnabled, setFactCheckEnabled] = useState(false);
+  const [hasTavilyKey, setHasTavilyKey] = useState(true);
+  const [factCheckNoticeDismissed, setFactCheckNoticeDismissed] = useState(false);
   // Executores de recursos "Experimentar" (notas de aula / diagrama / busca em reunião).
   // Chamam os IPCs reais contra o transcript da reunião ATUAL, então precisam de uma
   // reunião ativa + a flag correspondente. Os handlers retornam { enabled:false } quando
@@ -334,9 +339,11 @@ export const IntelligenceSettings: React.FC = () => {
   // Atualiza as flags de inteligência e a configuração Hindsight
   const refresh = useCallback(async () => {
     try {
-      const [f, c] = await Promise.all([
+      const [f, c, fc, creds] = await Promise.all([
         window.electronAPI.getIntelligenceFlags?.(),
         window.electronAPI.getHindsightConfig?.(),
+        window.electronAPI.getFactCheckEnabled?.().catch(() => null),
+        window.electronAPI.getStoredCredentials?.().catch(() => null),
       ]);
       if (Array.isArray(f)) setFlags(f);
       if (c) {
@@ -345,6 +352,8 @@ export const IntelligenceSettings: React.FC = () => {
         setAutoStart(c.autoStart !== false);
         setHealthy(c.available);
       }
+      if (fc && typeof fc.enabled === 'boolean') setFactCheckEnabled(fc.enabled);
+      if (creds && typeof creds.hasTavilyKey === 'boolean') setHasTavilyKey(creds.hasTavilyKey);
     } catch { /* settings panel nunca throws */ }
   }, []);
 
@@ -360,6 +369,22 @@ export const IntelligenceSettings: React.FC = () => {
       }
     } catch { await refresh(); }
   }, [refresh]);
+
+  // Live fact-check (mic): mesmo padrão otimista do onToggleFlag, mas via
+  // claim:get-enabled / claim:set-enabled (getFactCheckEnabled/setFactCheckEnabled).
+  const onToggleFactCheck = useCallback(async () => {
+    const next = !factCheckEnabled;
+    setFactCheckEnabled(next);
+    if (next) setFactCheckNoticeDismissed(false);
+    try {
+      const res = await window.electronAPI.setFactCheckEnabled?.(next);
+      if (res && res.success === false) {
+        setFactCheckEnabled(!next);
+      } else {
+        await refresh();
+      }
+    } catch { await refresh(); }
+  }, [factCheckEnabled, refresh]);
 
   // Salva a configuração do servidor Hindsight
   const onSaveHindsight = useCallback(async () => {
@@ -658,6 +683,23 @@ export const IntelligenceSettings: React.FC = () => {
             </div>
           </Disclosure>
         </div>
+      </section>
+
+      {/* ── Live fact-check (mic) — opt-in via claim:get-enabled / claim:set-enabled ── */}
+      <section className="rounded-xl border border-border-subtle bg-bg-item-surface p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-text-primary">Live fact-check (mic)</div>
+            <div className="mt-1 text-xs leading-relaxed text-text-secondary">Checks strong mic claims live and shows a discreet verdict chip. Without a Tavily key it runs degraded on model knowledge only.</div>
+          </div>
+          <Toggle on={factCheckEnabled} onClick={onToggleFactCheck} />
+        </div>
+        {factCheckEnabled && !hasTavilyKey && !factCheckNoticeDismissed ? (
+          <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[11px] leading-relaxed text-amber-300/90">
+            <span>No Tavily key saved — fact-check runs degraded (model knowledge only, lower confidence). Add a key in Profile Intelligence → Tavily Search API.</span>
+            <button type="button" onClick={() => setFactCheckNoticeDismissed(true)} className="shrink-0 font-medium underline hover:no-underline">Dismiss</button>
+          </div>
+        ) : null}
       </section>
 
       {/* ── Experimentar (executa contra a reunião atual) ────────────── */}
