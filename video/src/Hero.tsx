@@ -62,7 +62,12 @@ const HeroVideo: React.FC = () => {
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition presentation={fade()} timing={linearTiming({durationInFrames: T})} />
         <TransitionSeries.Sequence durationInFrames={330}>
-          <OverlayFinale app={staticFile('app.png')} logo={staticFile('logo.png')} />
+          <OverlayFinale
+            app={staticFile('app.png')}
+            empty={staticFile('overlay-panel.png')}
+            asked={staticFile('overlay-asked-crop.png')}
+            logo={staticFile('logo.png')}
+          />
         </TransitionSeries.Sequence>
       </TransitionSeries>
       {/* film finish, always on top: grade, grain, vignette */}
