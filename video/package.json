@@ -1,0 +1,16 @@
+{
+  "name": "refract-video",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render Hero out/hero.mp4 --overwrite"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.422",
+    "@remotion/transitions": "4.0.422",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.422"
+  }
+}

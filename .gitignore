@@ -389,7 +389,12 @@ resources/models/
 resources/engine/
 # site/: clone de referência de terceiros — não pode ir para repositório público
 # (questão de direito autoral) e tem HTML de 60MB.
-site/
+site/*
+# Exceções versionadas: servidor multi-site + gerador do blog (código nosso).
+!site/serve-all.mjs
+!site/build-blog.mjs
+# Renders do vídeo: artefatos locais, nunca versionar.
+video/out/
 landing/*.png
 screenshot-refract-v2.png
 screenshot-refract.png
