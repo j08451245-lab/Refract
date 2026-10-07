@@ -36,7 +36,7 @@ export const LogoReveal: React.FC<{logo: string}> = ({logo}) => {
 
   return (
     <AbsoluteFill style={{backgroundColor: '#020306', alignItems: 'center', justifyContent: 'center'}}>
-      {frame >= 7 && frame < 10 && <Audio src={staticFile('thump.wav')} volume={0.9} />}
+      {frame >= 9 && frame < 12 && <Audio src={staticFile('thump.wav')} volume={0.9} />}
       {frame >= 16 && frame < 52 && <Audio src={staticFile('shimmer.wav')} volume={0.55} />}
 
       {/* spark rays */}

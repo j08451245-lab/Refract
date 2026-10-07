@@ -35,7 +35,7 @@ export const Hero: React.FC = () => {
 const HeroVideo: React.FC = () => {
   return (
     <AbsoluteFill style={{backgroundColor: '#050507'}}>
-      <Audio src={staticFile('pad.wav')} volume={0.3} loop />
+      <Audio src={staticFile('music-mornings.mp3')} volume={0.42} />
       <TransitionSeries>
         <TransitionSeries.Sequence durationInFrames={160}>
           <LogoReveal logo={staticFile('logo.png')} />

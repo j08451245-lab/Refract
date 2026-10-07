@@ -50,7 +50,7 @@ export const SiteTour: React.FC<{tall: string}> = ({tall}) => {
 
   return (
     <AbsoluteFill style={{backgroundColor: '#050507', overflow: 'hidden'}}>
-      {[43, 130, 217].map((f) =>
+      {[43, 123, 226].map((f) =>
         frame >= f - 3 && frame < f + 11 ? (
           <Audio key={f} src={staticFile('whoosh.wav')} volume={0.3} />
         ) : null,
