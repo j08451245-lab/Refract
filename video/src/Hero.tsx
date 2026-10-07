@@ -1,6 +1,7 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Composition, staticFile} from 'remotion';
 import {TransitionSeries, linearTiming} from '@remotion/transitions';
+import {loadFont} from '@remotion/google-fonts/Inter';
 import {fade} from '@remotion/transitions/fade';
 import {LogoReveal} from './scenes/LogoReveal';
 import {SiteRise} from './scenes/SiteRise';
@@ -8,17 +9,19 @@ import {SiteTour} from './scenes/SiteTour';
 import {DesktopReveal} from './scenes/DesktopReveal';
 import {LauncherTour} from './scenes/LauncherTour';
 import {OverlayFinale} from './scenes/OverlayFinale';
+import {Grade, Grain, Vignette} from './design/fx';
+
+loadFont('normal', {weights: ['500', '600', '700']});
 
 const FPS = 30;
-const T = 12; // transition overlap frames
+const T = 12;
 
 export const Hero: React.FC = () => {
   return (
     <Composition
       id="Hero"
       component={HeroVideo}
-      // 160+130+300+130+360+330 sequences; 12f transitions overlap
-      // (shared frames), so total = 1410 - 5*12 = 1350.
+      // sequences 1410; 12f fades overlap (shared frames): total = 1350.
       durationInFrames={1350}
       fps={FPS}
       width={1920}
@@ -31,8 +34,7 @@ export const Hero: React.FC = () => {
 const HeroVideo: React.FC = () => {
   return (
     <AbsoluteFill style={{backgroundColor: '#050507'}}>
-      {/* quiet ambient bed under the whole film */}
-      <Audio src={staticFile('pad.wav')} volume={0.32} loop />
+      <Audio src={staticFile('pad.wav')} volume={0.3} loop />
       <TransitionSeries>
         <TransitionSeries.Sequence durationInFrames={160}>
           <LogoReveal logo={staticFile('logo.png')} />
@@ -58,6 +60,10 @@ const HeroVideo: React.FC = () => {
           <OverlayFinale app={staticFile('app.png')} logo={staticFile('logo.png')} />
         </TransitionSeries.Sequence>
       </TransitionSeries>
+      {/* film finish, always on top: grade, grain, vignette */}
+      <Grade />
+      <Grain />
+      <Vignette />
     </AbsoluteFill>
   );
 };
