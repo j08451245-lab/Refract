@@ -72,13 +72,16 @@ export const OverlayFinale: React.FC<{app: string; logo: string}> = ({app, logo}
   const title = 'Refract';
 
   return (
-    <AbsoluteFill style={{backgroundColor: '#050507', overflow: 'hidden'}}>
+    <AbsoluteFill style={{backgroundColor: '#0d0518', overflow: 'hidden'}}>
       {frame >= 5 && frame < 8 && <Audio src={staticFile('thump.wav')} volume={0.5} />}
       {frame >= 149 && frame < 152 && <Audio src={staticFile('click.wav')} volume={0.7} />}
       {frame >= 172 && frame < 178 && <Audio src={staticFile('pop.wav')} volume={0.5} />}
       {frame >= 212 && frame < 218 && <Audio src={staticFile('pop.wav')} volume={0.5} />}
       {frame >= 253 && frame < 267 && <Audio src={staticFile('whoosh.wav')} volume={0.5} />}
 
+      <div style={{position: 'absolute', width: 1400, height: 1400, borderRadius: '50%',
+        left: 260, top: -650, filter: 'blur(90px)', pointerEvents: 'none',
+        background: 'radial-gradient(circle, rgba(109,40,217,0.4), transparent 62%)'}} />
       <div style={{position: 'absolute', inset: 0, transform: `scale(${inhale})`}}>
         <Img
           src={app}

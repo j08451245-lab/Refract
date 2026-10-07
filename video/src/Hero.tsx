@@ -8,6 +8,7 @@ import {SiteRise} from './scenes/SiteRise';
 import {SiteTour} from './scenes/SiteTour';
 import {DesktopReveal} from './scenes/DesktopReveal';
 import {LauncherTour} from './scenes/LauncherTour';
+import {SceneFlight} from './scenes/SceneFlight';
 import {OverlayFinale} from './scenes/OverlayFinale';
 import {Grade, Grain, Vignette} from './design/fx';
 
@@ -53,7 +54,11 @@ const HeroVideo: React.FC = () => {
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition presentation={fade()} timing={linearTiming({durationInFrames: T})} />
         <TransitionSeries.Sequence durationInFrames={360}>
-          <LauncherTour app={staticFile('app.png')} />
+          <SceneFlight
+            private={staticFile('cards/card-private.png')}
+            day={staticFile('cards/card-day.png')}
+            memory={staticFile('cards/card-memory.png')}
+          />
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition presentation={fade()} timing={linearTiming({durationInFrames: T})} />
         <TransitionSeries.Sequence durationInFrames={330}>
