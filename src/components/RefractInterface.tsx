@@ -6524,9 +6524,11 @@ Provide only the answer, nothing else.`;
                     )
                   }
 
-                  {/* Custom Rich Placeholder */}
+                  {/* Custom Rich Placeholder — bounded left AND right so the
+                      nowrap hint clips at the input edge instead of spilling
+                      past the card on narrow panels. */}
                   {!inputValue && (
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none text-[13px] overlay-text-muted">
+                    <div className="absolute left-3.5 right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 max-w-full overflow-hidden pointer-events-none text-[13px] overlay-text-muted">
                       <span>Ask anything on screen or conversation, or</span>
                       <div className="flex items-center gap-1 opacity-80">
                         {(
