@@ -6270,9 +6270,13 @@ Provide only the answer, nothing else.`;
                 </motion.div>
               )}
 
-              {/* Rápido Actions - Minimal & Clean */}
+              {/* Rápido Actions - Minimal & Clean.
+                  flex-wrap (nunca nowrap+hidden): quando o painel estreita
+                  (colapsado 600 ou janela menor que o esperado) os chips
+                  quebram para 2 linhas em vez de vazar para fora do card.
+                  Nas larguras normais (600/732) continua em linha única. */}
               <div
-                className={`overlay-quick-actions flex flex-nowrap justify-center items-center gap-1.5 px-4 pb-3 overflow-x-hidden ${rollingTranscript && showTranscript ? 'pt-1' : 'pt-3'}`}
+                className={`overlay-quick-actions flex flex-wrap justify-center items-center gap-1.5 px-4 pb-3 overflow-x-hidden min-w-0 ${rollingTranscript && showTranscript ? 'pt-1' : 'pt-3'}`}
               >
                 <button
                   type="button"

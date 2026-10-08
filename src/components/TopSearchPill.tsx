@@ -256,7 +256,7 @@ const TopSearchPill: React.FC<TopSearchPillProps> = ({
             {/* Busca Pill Container */}
             <div
                 ref={containerRef}
-                className="absolute left-1/2 -translate-x-1/2 top-[7px] no-drag z-40"
+                className="absolute left-1/2 -translate-x-1/2 top-[7px] no-drag z-[100]"
             >
                 <div className="relative">
                     <motion.div
