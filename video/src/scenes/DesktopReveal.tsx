@@ -10,50 +10,37 @@ import {
 import {theme} from '../design/theme';
 import {BgMesh} from '../design/fx';
 
-// Scene 4 (130f): the site sinks away blurred; aurora stage breathes in
-// (anticipation), then the launcher rises expo with a floor reflection.
-export const DesktopReveal: React.FC<{site: string; app: string}> = ({site, app}) => {
+// Scene 2 (130f): aurora stage breathes in from black, then the launcher
+// rises expo with a floor reflection. (Site tour was cut: the film lives
+// on the site, so showing it inside is redundant.)
+export const DesktopReveal: React.FC<{app: string}> = ({app}) => {
   const frame = useCurrentFrame();
 
-  const sink = interpolate(frame, [0, 42], [0, 720], {
-    easing: theme.ease.in,
-    extrapolateRight: 'clamp',
-  });
-  const sinkBlur = interpolate(frame, [0, 42], [0, 20], {extrapolateRight: 'clamp'});
-  const sinkDim = interpolate(frame, [0, 42], [1, 0], {extrapolateRight: 'clamp'});
-
-  const stage = interpolate(frame, [12, 52], [0, 1], {
+  const stage = interpolate(frame, [0, 40], [0, 1], {
     easing: theme.ease.out,
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
 
   // anticipation crouch then expo rise
-  const crouch = interpolate(frame, [30, 40], [40, 0], {
+  const crouch = interpolate(frame, [18, 28], [40, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const t = Math.min(1, Math.max(0, (frame - 40) / 52));
+  const t = Math.min(1, Math.max(0, (frame - 28) / 52));
   const riseE = t <= 0 ? 0 : t >= 1 ? 1 : 1 - Math.pow(2, -9 * t);
-  const wy = (1 - riseE) * 1080 + (frame < 40 ? 1080 + crouch : 0);
-  const landed = frame >= 88;
+  const wy = (1 - riseE) * 1080 + (frame < 28 ? 1080 + crouch : 0);
+  const landed = frame >= 76;
 
-  const sheen = interpolate(frame, [70, 115], [-300, 1900], {
+  const sheen = interpolate(frame, [58, 103], [-300, 1900], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
 
   return (
     <AbsoluteFill style={{backgroundColor: '#050507', overflow: 'hidden'}}>
-      {frame >= 37 && frame < 51 && <Audio src={staticFile('whoosh.wav')} volume={0.55} />}
-      {frame >= 85 && frame < 88 && <Audio src={staticFile('thump.wav')} volume={0.7} />}
-      <Img
-        src={site}
-        style={{
-          width: '100%', height: '100%', objectFit: 'cover',
-          transform: `translateY(${sink}px)`, filter: `blur(${sinkBlur}px)`, opacity: sinkDim,
-        }}
-      />
+      {frame >= 25 && frame < 39 && <Audio src={staticFile('whoosh.wav')} volume={0.55} />}
+      {frame >= 73 && frame < 76 && <Audio src={staticFile('thump.wav')} volume={0.7} />}
       <div style={{opacity: stage}}>
         <BgMesh />
       </div>

@@ -4,10 +4,7 @@ import {TransitionSeries, linearTiming} from '@remotion/transitions';
 import {loadFont} from '@remotion/google-fonts/Inter';
 import {fade} from '@remotion/transitions/fade';
 import {LogoReveal} from './scenes/LogoReveal';
-import {SiteRise} from './scenes/SiteRise';
-import {SiteTour} from './scenes/SiteTour';
 import {DesktopReveal} from './scenes/DesktopReveal';
-import {LauncherTour} from './scenes/LauncherTour';
 import {SceneFlight} from './scenes/SceneFlight';
 import {OverlayFinale} from './scenes/OverlayFinale';
 import {Grade, Grain, Vignette} from './design/fx';
@@ -22,8 +19,8 @@ export const Hero: React.FC = () => {
     <Composition
       id="Hero"
       component={HeroVideo}
-      // sequences 1410; 12f fades overlap (shared frames): total = 1350.
-      durationInFrames={1350}
+      // sequences 160+130+360+330; 12f fades overlap: total = 980 - 3*10 = 950.
+      durationInFrames={950}
       fps={FPS}
       width={1920}
       height={1080}
@@ -42,15 +39,7 @@ const HeroVideo: React.FC = () => {
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition presentation={fade()} timing={linearTiming({durationInFrames: T})} />
         <TransitionSeries.Sequence durationInFrames={130}>
-          <SiteRise shot={staticFile('site-hero.png')} />
-        </TransitionSeries.Sequence>
-        <TransitionSeries.Transition presentation={fade()} timing={linearTiming({durationInFrames: T})} />
-        <TransitionSeries.Sequence durationInFrames={300}>
-          <SiteTour tall={staticFile('site-tall.png')} />
-        </TransitionSeries.Sequence>
-        <TransitionSeries.Transition presentation={fade()} timing={linearTiming({durationInFrames: T})} />
-        <TransitionSeries.Sequence durationInFrames={130}>
-          <DesktopReveal site={staticFile('site-hero.png')} app={staticFile('app.png')} />
+          <DesktopReveal app={staticFile('app.png')} />
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition presentation={fade()} timing={linearTiming({durationInFrames: T})} />
         <TransitionSeries.Sequence durationInFrames={360}>
