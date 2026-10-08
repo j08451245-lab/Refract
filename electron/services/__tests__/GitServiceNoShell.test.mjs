@@ -44,9 +44,10 @@ describe('validadores do GitService (build dist-electron)', () => {
     assert.doesNotThrow(() => assertSafePathSpec('a b/c-d_e.ts'));
     // Via argv (sem shell), $()/backticks são literais inofensivos — o assert
     // estrito barra apenas o que pode alterar semântica: NUL, magia de
-    // pathspec (":..."), tamanho absurdo e não-strings.
+    // pathspec (":..."), option-injection ('-' inicial vira flag sem `--`),
+    // tamanho absurdo e não-strings.
     assert.doesNotThrow(() => assertSafePathSpec('a$(id).txt'));
-    for (const evil of ['', 'a\0b', ':!foo', ':/etc', 'x'.repeat(2000), 42, null]) {
+    for (const evil of ['', 'a\0b', ':!foo', ':/etc', '-u', '--help', 'x'.repeat(2000), 42, null]) {
       assert.throws(() => assertSafePathSpec(evil), /Invalid file path/, JSON.stringify(evil));
     }
   });

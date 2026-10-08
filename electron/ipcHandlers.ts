@@ -12921,6 +12921,11 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle('local-whisper-cancel-download', async (_event, modelId: string) => {
     try {
+      // F-06 (defesa em profundidade): mesmo allowlist do start-download.
+      // Sem isso, um id desconhecido chegava a resolveLocalModelProviderName
+      // (que faz lookup por prefixo/string) e ao service de download.
+      const whisperModels: typeof import('./audio/whisper/modelManager') = require('./audio/whisper/modelManager');
+      whisperModels.assertKnownModelId(modelId);
       const { LocalModelDownloadService, resolveLocalModelProviderName } = require('./services/LocalModelDownloadService');
       return LocalModelDownloadService.getInstance().cancel(resolveLocalModelProviderName(modelId), modelId);
     } catch (e: any) {

@@ -58,6 +58,21 @@ describe('F-06 whisper model allowlist', () => {
     assert.match(h, /assertKnownModelId\(modelId\)/);
   });
 
+  test('cancel-download valida o id antes de cancelar (F-06 defesa em profundidade)', () => {
+    const src = read('electron/ipcHandlers.ts');
+    const h = sliceSafeHandleBlock(src, 'local-whisper-cancel-download');
+    assert.ok(h.length > 0, 'handler local-whisper-cancel-download existe');
+    assert.match(h, /assertKnownModelId\(modelId\)/);
+    // O assert precisa vir ANTES do resolve — senão o id cru já alcançou o service.
+    // (Compara as CHAMADAS reais: `.assertKnownModelId(` vs `resolveLocalModelProviderName(`,
+    // para não tropeçar no comentário explicativo que cita o nome da função.)
+    const assertIdx = h.indexOf('.assertKnownModelId(modelId)');
+    const resolveIdx = h.indexOf('resolveLocalModelProviderName(modelId)');
+    assert.ok(assertIdx >= 0, 'chamada assertKnownModelId(modelId) existe');
+    assert.ok(resolveIdx === -1 || assertIdx < resolveIdx,
+      'assertKnownModelId deve preceder resolveLocalModelProviderName');
+  });
+
   test('assertKnownModelId funcional', async () => {
     const f = built('electron/audio/whisper/modelManager.js');
     if (!fs.existsSync(f)) return;
@@ -77,6 +92,14 @@ describe('F-08 repo scan confinado', () => {
     const idx = read('electron/repo-indexer/RepoIndexer.ts');
     assert.match(idx, /REPO_SCAN_MAX_FILES/);
     assert.match(idx, /isSymbolicLink/);
+  });
+
+  test('denied-list cobre diretórios de sistema do macOS + ~/Library', () => {
+    const src = read('electron/repo-indexer/repoPathPolicy.ts');
+    for (const dir of ['/private', '/Library', '/Applications', '/System']) {
+      assert.ok(src.includes(`'${dir}'`), `denied-list deve conter ${dir}`);
+    }
+    assert.match(src, /path\.join\(home, 'Library'\)/);
   });
 
   test('validateRepoPath funcional', async () => {

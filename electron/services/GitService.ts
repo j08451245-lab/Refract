@@ -38,6 +38,13 @@ export function assertSafePathSpec(p: unknown): asserts p is string {
     if (p.startsWith(':')) {
         throw new Error('Invalid file path');
     }
+    // Option-injection: um pathspec começando com '-' vira flag do git se
+    // algum call-site esquecer o `--` separador (ex: arquivo "-u" → `git add -u`).
+    // Via argv (sem shell) $()/backticks são literais inofensivos, mas '-' inicial
+    // altera semântica do comando — barra aqui, uma vez, para todos os call-sites.
+    if (p.startsWith('-')) {
+        throw new Error('Invalid file path');
+    }
 }
 
 /** Valida um nome de branch vindo do renderer. */

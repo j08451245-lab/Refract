@@ -73,7 +73,14 @@ export function validateRepoPath(repoPath: unknown): string {
       /* sem leitura do dir de usuários — segue sem essa trava */
     }
   } else {
-    denied.push('/etc', '/proc', '/sys', '/dev', '/bin', '/sbin', '/usr', '/var', '/boot', '/root');
+    denied.push(
+      '/etc', '/proc', '/sys', '/dev', '/bin', '/sbin', '/usr', '/var', '/boot', '/root',
+      // macOS: diretórios de sistema fora da lista Linux + segredos do usuário.
+      // /private contém /private/etc, /private/var e tmp; /Library guarda suportes
+      // de app; ~/Library guarda cookies, keychains parciais e tokens.
+      '/private', '/Library', '/Applications', '/System',
+      path.join(home, 'Library'),
+    );
     try {
       for (const entry of fs.readdirSync('/home', { withFileTypes: true })) {
         if (entry.isDirectory()) {
