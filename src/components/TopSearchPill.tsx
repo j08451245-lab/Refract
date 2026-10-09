@@ -245,7 +245,7 @@ const TopSearchPill: React.FC<TopSearchPillProps> = ({
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.15 }}
-                            className="fixed inset-0 bg-black/35 backdrop-blur-[6px] z-[90]"
+                            className="fixed inset-0 bg-black/30 z-[90]"
                             onClick={close}
                         />
                     )}
