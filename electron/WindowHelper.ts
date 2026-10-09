@@ -242,8 +242,14 @@ export class WindowHelper {
   // que o shell (centralizado com mx-auto) não pareça pular lateralmente quando a
   // janela cresce: a janela cresce simetricamente (X desloca -widthDelta/2), e
   // mx-auto compensa reduzindo a margem igualmente — movimento visual líquido = 0.
-  public setOverlayDimensionsCentered(width: number, height: number): void {
-    if (!this.overlayWindow || this.overlayWindow.isDestroyed()) return;
+  //
+  // HISTÓRICO: o canal IPC 'update-content-dimensions-centered' chama este método
+  // como setOverlayDimensionsAnchored (top-anchored, height-only). Uma renomeação
+  // parcial deixou o chamador apontando para um método inexistente — todo resize
+  // do overlay lançava TypeError e a janela congelava no tamanho inicial,
+  // cortando o composer. Este é o método canônico; resolve com o tamanho aplicado.
+  public setOverlayDimensionsAnchored(width: number, height: number): { width: number; height: number } {
+    if (!this.overlayWindow || this.overlayWindow.isDestroyed()) return { width, height };
 
     const currentBounds = this.overlayWindow.getBounds();
     const currentContentSize = this.overlayWindow.getContentSize();
@@ -252,7 +258,7 @@ export class WindowHelper {
     const maxAllowedHeight = Math.floor(workArea.height * 0.9);
     const newWidth = Math.min(Math.max(width, 300), maxAllowedWidth);
     const newHeight = Math.min(Math.max(height, 1), maxAllowedHeight);
-    traceOverlayResize('setOverlayDimensionsCentered:request', {
+    traceOverlayResize('setOverlayDimensionsAnchored:request', {
       requested: { width, height },
       currentBounds,
       currentContentSize,
@@ -277,13 +283,13 @@ export class WindowHelper {
       newX === currentBounds.x &&
       newY === currentBounds.y
     ) {
-      traceOverlayResize('setOverlayDimensionsCentered:noop', {
+      traceOverlayResize('setOverlayDimensionsAnchored:noop', {
         requested: { width, height },
         currentBounds,
         currentContentSize,
         computed: { x: newX, y: newY, width: newWidth, height: newHeight },
       });
-      return;
+      return { width: newWidth, height: newHeight };
     }
 
     // Atomic frame change: a único setBounds avoids o 1-frame divide onde
@@ -291,11 +297,17 @@ export class WindowHelper {
     // what it causes o shell para visibly slide e snap durante code-expansion.
     this.overlayWindow.setBounds({ x: newX, y: newY, width: newWidth, height: newHeight });
     this.overlayBounds = this.overlayWindow.getBounds();
-    traceOverlayResize('setOverlayDimensionsCentered:applied', {
+    traceOverlayResize('setOverlayDimensionsAnchored:applied', {
       requested: { width, height },
       appliedBounds: this.overlayBounds,
       contentSizeAfter: this.overlayWindow.getContentSize(),
     });
+    return { width: newWidth, height: newHeight };
+  }
+
+  /** Alias legado — delega para o método canônico ancorado. */
+  public setOverlayDimensionsCentered(width: number, height: number): { width: number; height: number } {
+    return this.setOverlayDimensionsAnchored(width, height);
   }
 
   // NOTE: o overlay janela é a FIXED WIDTH (OVERLAY_DEFAULT_WIDTH = 780) para
