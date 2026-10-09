@@ -14,7 +14,7 @@ import ConnectCalendarButton from './ui/ConnectCalendarButton';
 import MeetingDetails from './MeetingDetails';
 import TopSearchPill from './TopSearchPill';
 import GlobalChatOverlay from './GlobalChatOverlay';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, MotionConfig, type Variants } from 'framer-motion';
 import { FeatureSpotlight } from './FeatureSpotlight';
 import { analytics } from '../lib/analytics/analytics.service'; // Added analytics importar
 import { AssistantsPicker } from './AssistantsPicker';
@@ -90,8 +90,21 @@ const formatTime = (dateStr: string) => {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
 };
 
+// Micro-interactions vocabulary (spec 2026-10-09): transform + opacity only,
+// expo-out easing, stagger 40-50ms. Respects OS reduced-motion via the
+// MotionConfig wrapper at the root (reducedMotion="user").
+const entranceStagger: Variants = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } },
+};
+const entranceRise: Variants = {
+    hidden: { opacity: 0, y: 12 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
+};
+
 const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onOpenProfile, onOpenModes, onPageChange, ollamaPullStatus = 'idle', ollamaPullPercent = 0, ollamaPullMessage = '', isPremium = false, activeModeId = null, onSelectAssistant }) => {
     const [meetings, setMeetings] = useState<Meeting[]>([]);
+    const [meetingsLoaded, setMeetingsLoaded] = useState(false);
     const [isDetectable, setIsDetectable] = useState(false);
     const [isMeetingActive, setIsMeetingActive] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -129,7 +142,12 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
 
     const fetchMeetings = () => {
         if (window.electronAPI && window.electronAPI.getRecentMeetings) {
-            window.electronAPI.getRecentMeetings().then(setMeetings).catch(err => console.error("Failed to fetch meetings:", err));
+            window.electronAPI.getRecentMeetings()
+                .then(setMeetings)
+                .catch(err => console.error("Failed to fetch meetings:", err))
+                .finally(() => setMeetingsLoaded(true));
+        } else {
+            setMeetingsLoaded(true);
         }
     };
 
@@ -449,6 +467,7 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
     };
 
     return (
+        <MotionConfig reducedMotion="user">
         <div
             className="refract-launcher h-full w-full flex flex-col bg-bg-primary text-text-primary font-sans overflow-hidden selection:bg-accent-secondary/30"
             data-stealth={!isDetectable ? 'true' : 'false'}
@@ -806,9 +825,17 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
 
                             {/* Seção Superior: Fundo Cinza (Rola com o conteúdo) */}
                             <section className="launcher-hero px-8 pt-7 pb-8 border-b shrink-0">
-                                <div className="launcher-workspace max-w-[1080px] mx-auto space-y-6">
+                                <motion.div
+                                    className="launcher-workspace max-w-[1080px] mx-auto space-y-6"
+                                    variants={entranceStagger}
+                                    initial="hidden"
+                                    animate="show"
+                                >
                                     {/* 1.5. Cabeçalho Hero (Título + Controles + CTA) */}
-                                    <div className="launcher-workspace-header flex items-center justify-between">
+                                    <motion.div
+                                        className="launcher-workspace-header flex items-center justify-between"
+                                        variants={entranceRise}
+                                    >
                                         <div className="launcher-workspace-controls flex items-center gap-3">
                                             <div>
                                                 <p className="launcher-workspace-kicker text-[11px] font-medium text-text-tertiary mb-1">Workspace</p>
@@ -866,7 +893,11 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
                                                         !isDetectable ? 'bg-violet-500' : isLight ? 'bg-black/15' : 'bg-white/15'
                                                     }`}
                                                 >
-                                                    <span className={`absolute top-[2px] w-[13px] h-[13px] rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.25)] transition-all duration-300 ${!isDetectable ? 'left-[15px]' : 'left-[2px]'}`} />
+                                                    <motion.span
+                                                    animate={{ left: !isDetectable ? 15 : 2 }}
+                                                    transition={{ type: 'spring', stiffness: 550, damping: 28 }}
+                                                    className="absolute top-[2px] w-[13px] h-[13px] rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.25)]"
+                                                />
                                                 </span>
                                             </button>
 
@@ -1001,10 +1032,13 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
                                             <Target size={14} className="opacity-70" />
                                             <span className="text-[13.5px] leading-none tracking-[-0.01em]">Practice</span>
                                         </motion.button>
-                                    </div>
+                                    </motion.div>
 
                                     {/* 2. Hero Section Cards */}
-                                    <div className="launcher-feature-grid grid grid-cols-1 md:grid-cols-3 gap-4 h-[206px]">
+                                    <motion.div
+                                        className="launcher-feature-grid grid grid-cols-1 md:grid-cols-3 gap-4 h-[206px]"
+                                        variants={entranceRise}
+                                    >
                                         {/* Default Intro — refract support & upcoming features.
                                             Calendar "Up Next" lives in Settings → Calendar, not here. */}
                                         <div className="md:col-span-2 h-full">
@@ -1175,8 +1209,8 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                </div>
+                                    </motion.div>
+                                </motion.div>
                             </section>
 
                             {/* BOTTOM SECTION: Black Background (Scrollable content) */}
@@ -1212,10 +1246,12 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
                                                             const peak = Math.max(...weekStats.perDay, 1);
                                                             const pct = mins === 0 ? 5 : Math.max(12, Math.round((mins / peak) * 100));
                                                             return (
-                                                                <span
+                                                                <motion.span
                                                                     key={i}
                                                                     className={`launcher-sparkline-bar${i === 6 ? ' is-today' : ''}`}
-                                                                    style={{ height: `${pct}%` }}
+                                                                    initial={{ height: 0 }}
+                                                                    animate={{ height: `${pct}%` }}
+                                                                    transition={{ duration: 0.4, delay: 0.15 + i * 0.04, ease: [0.16, 1, 0.3, 1] }}
                                                                 />
                                                             );
                                                         })}
@@ -1232,15 +1268,32 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
                                             )}
                                         </div>
 
-                                        {/* Iterating Date Groups */}
-                                        {sortedGroups.map((label) => (
+                                        {/* Iterating Date Groups (skeleton shimmer while loading — fixed height, no shift) */}
+                                        {!meetingsLoaded ? (
+                                            <div className="space-y-1" aria-hidden="true">
+                                                {[0, 1, 2].map((i) => (
+                                                    <div
+                                                        key={i}
+                                                        className="h-[44px] rounded-lg bg-white/[0.04] animate-pulse motion-reduce:animate-none"
+                                                        style={{ animationDelay: `${i * 130}ms` }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                        sortedGroups.map((label) => (
                                             <section key={label} className="meeting-history-group">
                                                 <h3 className="meeting-history-label">{label}</h3>
                                                 <div className="space-y-1">
+                                                    <AnimatePresence initial={false}>
                                                     {groupedMeetings[label].map((m) => (
                                                         <motion.div
                                                             key={m.id}
                                                             layoutId={`meeting-${m.id}`}
+                                                            layout
+                                                            initial={{ opacity: 0, y: 8 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                                                            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                                                             className="meeting-row group relative flex items-center justify-between px-3.5 py-2 bg-transparent"
                                                             onClick={() => handleOpenMeeting(m)}
                                                         >
@@ -1346,11 +1399,13 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
                                                             </AnimatePresence>
                                                         </motion.div>
                                                     ))}
+                                                    </AnimatePresence>
                                                 </div>
                                             </section>
-                                        ))}
+                                        ))
+                                        )}
 
-                                        {meetings.length === 0 && (
+                                        {meetingsLoaded && meetings.length === 0 && (
                                             <motion.div
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
@@ -1474,6 +1529,7 @@ const Launcher: React.FC<LauncherProps> = ({ onStartMeeting, onOpenSettings, onO
             {/* Tour guiado — primeiro uso + reprise pelo topbar */}
             <InteractiveTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
         </div >
+        </MotionConfig>
     );
 };
 

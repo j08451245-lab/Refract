@@ -6593,6 +6593,19 @@ button:not(:disabled),
   transform: scale(0.94);
 }
 
+/* Micro-interactions safety: honor OS reduced-motion inside the launcher.
+   Scoped to .refract-launcher so other screens are untouched. framer-motion
+   is separately gated via MotionConfig reducedMotion="user". */
+@media (prefers-reduced-motion: reduce) {
+  .refract-launcher *,
+  .refract-launcher *::before,
+  .refract-launcher *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 .launcher-stealth-halo {
   border-radius: 1px;
   box-shadow:
@@ -8009,9 +8022,9 @@ button:not(:disabled),
   min-height: 2px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--text-tertiary) 55%, transparent);
-  transition:
-    height var(--dur-slow) var(--ease-out),
-    background-color var(--dur-base) var(--ease-out);
+  /* height é animada pelo framer-motion no mount (não transicionar via CSS
+     ou as duas animações brigam); hover de cor continua via CSS. */
+  transition: background-color var(--dur-base) var(--ease-out);
 }
 
 .launcher-sparkline-bar:hover {

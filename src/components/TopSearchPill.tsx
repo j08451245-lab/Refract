@@ -329,22 +329,26 @@ const TopSearchPill: React.FC<TopSearchPillProps> = ({
                                                         <motion.button
                                                             initial={{ opacity: 0, scale: 0.95 }}
                                                             animate={{ opacity: 1, scale: 1 }}
-                                                            transition={{ duration: 0.2 }}
+                                                            transition={{ duration: 0.18, delay: 0 }}
                                                             data-selected={selectedIndex === 0}
                                                             className={`
-                                                            search-command-result w-full flex items-center gap-3 px-2.5 py-1.5 rounded-lg text-left
-                                                            ${selectedIndex === 0
-                                                                    ? 'bg-bg-item-active'
-                                                                    : 'hover:bg-bg-item-hover'
-                                                                }
+                                                            search-command-result relative w-full flex items-center gap-3 px-2.5 py-1.5 rounded-lg text-left
+                                                            hover:bg-bg-item-hover
                                                         `}
                                                             onClick={() => handleSelect(0)}
                                                             onMouseEnter={() => setSelectedIndex(0)}
                                                         >
-                                                            <div className="w-6 h-6 rounded-md bg-accent-primary/15 border border-accent-primary/20 flex items-center justify-center shrink-0">
+                                                            {selectedIndex === 0 && (
+                                                                <motion.span
+                                                                    layoutId="search-sel"
+                                                                    className="absolute inset-0 rounded-lg bg-bg-item-active"
+                                                                    transition={{ type: 'spring', stiffness: 550, damping: 38 }}
+                                                                />
+                                                            )}
+                                                            <div className="relative w-6 h-6 rounded-md bg-accent-primary/15 border border-accent-primary/20 flex items-center justify-center shrink-0">
                                                                 <Sparkles size={12} className="text-accent-primary" />
                                                             </div>
-                                                            <span className="text-[13px] text-text-primary truncate">
+                                                            <span className="relative text-[13px] text-text-primary truncate">
                                                                 {query}
                                                             </span>
                                                         </motion.button>
@@ -353,22 +357,26 @@ const TopSearchPill: React.FC<TopSearchPillProps> = ({
                                                         <motion.button
                                                             initial={{ opacity: 0, scale: 0.95 }}
                                                             animate={{ opacity: 1, scale: 1 }}
-                                                            transition={{ duration: 0.2 }}
+                                                            transition={{ duration: 0.18, delay: 0.04 }}
                                                             data-selected={selectedIndex === 1}
                                                             className={`
-                                                            search-command-result w-full flex items-center gap-3 px-2.5 py-1.5 rounded-lg text-left
-                                                            ${selectedIndex === 1
-                                                                    ? 'bg-bg-item-active'
-                                                                    : 'hover:bg-bg-item-hover'
-                                                                }
+                                                            search-command-result relative w-full flex items-center gap-3 px-2.5 py-1.5 rounded-lg text-left
+                                                            hover:bg-bg-item-hover
                                                         `}
                                                             onClick={() => handleSelect(1)}
                                                             onMouseEnter={() => setSelectedIndex(1)}
                                                         >
-                                                            <div className="w-6 h-6 rounded-md bg-bg-item-surface flex items-center justify-center shrink-0">
+                                                            {selectedIndex === 1 && (
+                                                                <motion.span
+                                                                    layoutId="search-sel"
+                                                                    className="absolute inset-0 rounded-lg bg-bg-item-active"
+                                                                    transition={{ type: 'spring', stiffness: 550, damping: 38 }}
+                                                                />
+                                                            )}
+                                                            <div className="relative w-6 h-6 rounded-md bg-bg-item-surface flex items-center justify-center shrink-0">
                                                                 <Search size={12} className="text-text-secondary" />
                                                             </div>
-                                                            <span className="text-[13px] text-text-secondary">
+                                                            <span className="relative text-[13px] text-text-secondary">
                                                                 Search for <span className="text-text-primary">"{query}"</span>
                                                             </span>
                                                         </motion.button>
@@ -389,22 +397,26 @@ const TopSearchPill: React.FC<TopSearchPillProps> = ({
                                                                         initial={{ opacity: 0, height: 0 }}
                                                                         animate={{ opacity: 1, height: 'auto' }}
                                                                         exit={{ opacity: 0, height: 0 }}
-                                                                        transition={{ duration: 0.2 }}
+                                                                        transition={{ duration: 0.18, delay: 0.08 + index * 0.03 }}
                                                                         data-selected={selectedIndex === index + 2}
                                                                         className={`
-                                                                        search-command-result w-full flex items-center gap-3 px-2.5 py-1.5 rounded-lg text-left
-                                                                        ${selectedIndex === index + 2
-                                                                                ? 'bg-bg-item-active'
-                                                                                : 'hover:bg-bg-item-hover'
-                                                                            }
+                                                                        search-command-result relative w-full flex items-center gap-3 px-2.5 py-1.5 rounded-lg text-left
+                                                                        hover:bg-bg-item-hover
                                                                     `}
                                                                         onClick={() => handleSelect(index + 2)}
                                                                         onMouseEnter={() => setSelectedIndex(index + 2)}
                                                                     >
-                                                                        <div className="w-6 h-6 rounded-md bg-bg-item-surface flex items-center justify-center shrink-0">
+                                                                        {selectedIndex === index + 2 && (
+                                                                            <motion.span
+                                                                                layoutId="search-sel"
+                                                                                className="absolute inset-0 rounded-lg bg-bg-item-active"
+                                                                                transition={{ type: 'spring', stiffness: 550, damping: 38 }}
+                                                                            />
+                                                                        )}
+                                                                        <div className="relative w-6 h-6 rounded-md bg-bg-item-surface flex items-center justify-center shrink-0">
                                                                             <FileText size={12} className="text-text-secondary" />
                                                                         </div>
-                                                                        <div className="flex-1 min-w-0">
+                                                                        <div className="relative flex-1 min-w-0">
                                                                             <div className="text-[13px] text-text-primary truncate">
                                                                                 {result.title}
                                                                             </div>
