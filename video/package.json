@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "studio": "remotion studio",
-    "render": "remotion render Hero out/hero.mp4 --overwrite"
+    "render": "remotion render Hero out/hero.mp4 --overwrite",
+    "render:demo": "remotion render Demo out/demo.mp4 --overwrite"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.422",

@@ -55,10 +55,11 @@ export const Vignette: React.FC<{strength?: number}> = ({strength = 0.24}) => (
 );
 
 // Aurora mesh ground — never a flat background.
+// Drift halved per doctrine: background shimmer only, never a sightline push.
 export const BgMesh: React.FC = () => {
   const frame = useCurrentFrame();
-  const d1 = Math.sin(frame / 55) * 60;
-  const d2 = Math.cos(frame / 70) * 50;
+  const d1 = Math.sin(frame / 55) * 26;
+  const d2 = Math.cos(frame / 70) * 22;
   return (
     <AbsoluteFill style={{background: theme.colors.bg}}>
       <div
@@ -92,14 +93,17 @@ export const BgMesh: React.FC = () => {
 // ---- Motion vocabulary ----
 
 // The workhorse: fade + rise + settle. Exits are faster than entrances.
+// `config` defaults to snappy (Hero); Demo passes theme.spring.settle
+// per the smooth-over-bouncy doctrine.
 export const Entrance: React.FC<{
   delay?: number;
   rise?: number;
+  config?: {damping: number; stiffness: number};
   children: React.ReactNode;
-}> = ({delay = 0, rise = 44, children}) => {
+}> = ({delay = 0, rise = 44, config, children}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
-  const p = spring({frame: frame - delay, fps, config: theme.spring.snappy});
+  const p = spring({frame: frame - delay, fps, config: config ?? theme.spring.snappy});
   if (p <= 0) return null;
   return (
     <div
@@ -119,8 +123,9 @@ export const WordReveal: React.FC<{
   text: string;
   delay?: number;
   per?: number;
+  config?: {damping: number; stiffness: number};
   style?: React.CSSProperties;
-}> = ({text, delay = 0, per = 3, style}) => {
+}> = ({text, delay = 0, per = 3, config, style}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   return (
@@ -129,7 +134,7 @@ export const WordReveal: React.FC<{
         const p = spring({
           frame: frame - delay - i * per,
           fps,
-          config: theme.spring.snappy,
+          config: config ?? theme.spring.snappy,
         });
         if (p <= 0) return <span key={i} style={{opacity: 0}}>{word}</span>;
         return (
@@ -140,6 +145,87 @@ export const WordReveal: React.FC<{
               opacity: p,
               filter: `blur(${interpolate(p, [0, 1], [10, 0])}px)`,
               transform: `translateY(${interpolate(p, [0, 1], [34, 0])}px)`,
+            }}
+          >
+            {word}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+// hyperframes-animation: ambient-glow-bloom — un-triggered soft radial glow
+// that blooms behind a hero and holds. Peak ≤ ~0.35, finite, deterministic.
+export const Bloom: React.FC<{
+  delay?: number;
+  peak?: number;
+  size?: number;
+  color?: string;
+}> = ({delay = 0, peak = 0.32, size = 900, color = '91,156,255'}) => {
+  const frame = useCurrentFrame();
+  const o = interpolate(frame, [delay, delay + 60], [0, peak], {
+    easing: theme.ease.out,
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  if (o <= 0) return null;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        left: `calc(50% - ${size / 2}px)`,
+        top: `calc(42% - ${size / 2}px)`,
+        background: `radial-gradient(circle, rgba(${color},${o}), transparent 62%)`,
+        filter: 'blur(40px)',
+        pointerEvents: 'none',
+      }}
+    />
+  );
+};
+
+// hyperframes-animation: gradient-text-sweep — a highlight travels THROUGH
+// held letterforms (background-clip:text + oversized background position
+// tween). Glyphs never move; the sweep is a pure function of frame.
+export const SweepText: React.FC<{
+  text: string;
+  delay?: number;
+  per?: number;
+  sweepFrames?: number;
+  config?: {damping: number; stiffness: number};
+  style?: React.CSSProperties;
+}> = ({text, delay = 0, per = 3, sweepFrames = 130, config, style}) => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const sweep = interpolate(frame, [delay, delay + sweepFrames], [0, 100], {
+    easing: theme.ease.inOut,
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  return (
+    <div style={{display: 'flex', flexWrap: 'wrap', gap: '0.24em', ...style}}>
+      {text.split(' ').map((word, i) => {
+        const p = spring({
+          frame: frame - delay - i * per,
+          fps,
+          config: config ?? theme.spring.settle,
+        });
+        if (p <= 0) return <span key={i} style={{opacity: 0}}>{word}</span>;
+        return (
+          <span
+            key={i}
+            style={{
+              display: 'inline-block',
+              opacity: p,
+              backgroundImage: `linear-gradient(100deg, #5b9cff 20%, #d6e6ff 50%, #5b9cff 80%)`,
+              backgroundSize: '220% 100%',
+              backgroundPosition: `${100 - sweep}% 0`,
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
             }}
           >
             {word}

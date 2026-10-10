@@ -16,6 +16,9 @@ export const theme = {
     snappy: {damping: 16, stiffness: 170},
     smooth: {damping: 20, stiffness: 80},
     heavy: {damping: 22, stiffness: 55},
+    // hyperframes-animation doctrine: smooth long-tail settle, ~no overshoot.
+    // Default for Demo entrances — bouncy is the #1 cheap tell.
+    settle: {damping: 200, stiffness: 160},
   },
   ease: {
     // expo-out: fast attack, long confident settle — the premium standard

@@ -107,7 +107,11 @@ Every star pushes Refract higher in GitHub search, helping developers and job se
 
 ## Demo
 
-![Refract AI Assistant Demo - Real-time Interview Helper and Transcription](assets/refract-ai-meeting-assistant-demo.gif)
+<video src="assets/refract-demo.mp4" poster="assets/refract-demo-poster.png" controls width="100%"></video>
+
+![Refract product demo teaser](assets/refract-demo-teaser.gif)
+
+**Watch the 48s product film** (with sound): hook → real dark launcher with zoom-to-click → live invisible overlay answering in <500ms → local RAG memory + any-model reasoning → private-by-architecture close.
 
 This demo shows **a complete live meeting scenario**:
 
@@ -117,6 +121,13 @@ This demo shows **a complete live meeting scenario**:
 - Instant generation of what to say next
 - Follow-up questions and concise responses
 - All happening live, without recording or post-processing
+
+<details>
+<summary>Previous demo (GIF)</summary>
+
+![Refract AI Assistant Demo - Real-time Interview Helper and Transcription](assets/refract-ai-meeting-assistant-demo.gif)
+
+</details>
 
 ---
 
