@@ -5,13 +5,19 @@ import {Entrance, WordReveal} from '../design/fx';
 import {ClickRipple, Cursor, cursorAt} from '../components/Cursor';
 
 // Act 3 — Live (420f = 14s).
-// Black stage. Real overlay centered. Cursor asks, transcript lands,
-// answer streams word-by-word, latency chip pulses. One take, no cuts.
+// Black stage. REAL overlay (dark, element-clipped capture, typed question
+// for real). Cursor asks, transcript lands, answer streams word-by-word,
+// latency chip pulses. One take, no cuts.
+//
+// Measured geometry (Playwright element clip, CSS px):
+//   panel 600 x 165.6, send button at in-panel (569, 135.6).
+// Displayed at PW=1240 (file is 2x, so ~1:1, no upscale blur).
+//   DS = PW/600, SEND = (PX + 569*DS, PY + 135.6*DS).
 const PW = 1240;
 const PX = (1920 - PW) / 2;
-const PY = 285;
-const SC = PW / 1400;
-const SEND = {x: PX + 1310 * SC, y: PY + 475 * SC};
+const PY = 300;
+const DS = PW / 600;
+const SEND = {x: PX + 569 * DS, y: PY + 135.6 * DS};
 
 const TRANSCRIPT: Array<{speaker: string; text: string; at: number}> = [
   {speaker: 'INTERVIEWER', text: 'How do you think about high margin versus fast growth?', at: 95},
@@ -142,7 +148,7 @@ export const ActLive: React.FC<{empty: string; asked: string}> = ({empty, asked}
           style={{
             position: 'absolute',
             left: (1920 - 980) / 2,
-            top: PY + 520,
+            top: 700,
             width: 980,
             fontFamily: theme.font,
             textAlign: 'center',
@@ -169,7 +175,7 @@ export const ActLive: React.FC<{empty: string; asked: string}> = ({empty, asked}
         style={{
           position: 'absolute',
           left: (1920 - 470) / 2,
-          top: PY + 624,
+          top: 830,
           width: 470,
           opacity: chip,
           display: 'flex',

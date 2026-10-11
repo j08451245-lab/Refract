@@ -5,7 +5,9 @@
   "scripts": {
     "studio": "remotion studio",
     "render": "remotion render Hero out/hero.mp4 --overwrite",
-    "render:demo": "remotion render Demo out/demo.mp4 --overwrite"
+    "render:demo": "remotion render Demo out/demo.mp4 --overwrite",
+    "render:teaser": "remotion render Teaser out/teaser.mp4 --overwrite",
+    "render:teaser-vertical": "remotion render TeaserVertical out/teaser-vertical.mp4 --overwrite"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.422",

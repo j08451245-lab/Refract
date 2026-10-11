@@ -44,7 +44,7 @@ const DemoVideo: React.FC = () => {
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition presentation={fade()} timing={linearTiming({durationInFrames: T})} />
         <TransitionSeries.Sequence durationInFrames={420}>
-          <ActLive empty={staticFile('overlay-panel.png')} asked={staticFile('overlay-asked-crop.png')} />
+          <ActLive empty={staticFile('overlay-real-empty.png')} asked={staticFile('overlay-real-asked.png')} />
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition presentation={fade()} timing={linearTiming({durationInFrames: T})} />
         <TransitionSeries.Sequence durationInFrames={360}>

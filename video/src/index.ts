@@ -2,6 +2,7 @@ import React from 'react';
 import {registerRoot} from 'remotion';
 import {Hero} from './Hero';
 import {Demo} from './demo/Demo';
+import {Teaser, TeaserVertical} from './teaser/Teaser';
 
 const RemotionRoot: React.FC = () => {
   return React.createElement(
@@ -9,6 +10,8 @@ const RemotionRoot: React.FC = () => {
     null,
     React.createElement(Hero),
     React.createElement(Demo),
+    React.createElement(Teaser),
+    React.createElement(TeaserVertical),
   );
 };
 
