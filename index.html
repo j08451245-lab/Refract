@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Refract — Intelligence in Silence</title>
+  <meta name="description" content="O assistente de IA on-device para reunioes e entrevistas tecnicas. Maxima privacidade, latencia ultrabaixa e design Apple Dark.">
+  <link rel="icon" type="image/png" href="../assets/icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Apple Glow Background -->
+  <div class="glow-bg" aria-hidden="true">
+    <div class="glow-blob glow-1"></div>
+    <div class="glow-blob glow-2"></div>
+    <div class="glow-blob glow-3"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <!-- Barra de Navegacao Glass -->
+  <nav class="nav-container">
+    <div class="nav-inner">
+      <a href="#" class="brand">
+        <div class="logo-wrapper">
+          <img src="../assets/icon.png" alt="Refract Logo" class="brand-icon">
+        </div>
+        <span class="brand-text">Refract</span>
+        <span class="badge-tag">v2.8</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="product.html" class="nav-link">Produto</a>
+        <a href="use-cases.html" class="nav-link">Casos de uso</a>
+        <a href="privacy.html" class="nav-link">Privacidade</a>
+        <a href="#arquitetura" class="nav-link">Arquitetura</a>
+        <a href="#faq" class="nav-link">FAQ</a>
+      </div>
+
+      <div class="nav-actions">
+        <a href="https://github.com/davifisica671-afk/Refract" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+          <span>GitHub</span>
+        </a>
+        <a href="download.html" class="btn btn-primary">
+          <span>Obter Refract</span>
+          <svg class="icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+  <!-- Hero Section -->
+  <header class="hero-section">
+    <div class="hero-badge-pill" data-reveal>
+      <span class="pulse-dot"></span>
+      <span class="pill-text">Engenharia Nativa · Baixa Latência · Zero Telemetria</span>
+    </div>
+
+    <h1 class="hero-title" data-reveal>
+      Inteligência em silêncio.<br>
+      <span class="text-gradient">No seu fluxo, na sua máquina.</span>
+    </h1>
+
+    <p class="hero-subtitle" data-reveal>
+      O copilot desktop de IA mais veloz e discreto já criado. Transcrição ao vivo de microfone e sistema em <span class="highlight">&lt;500ms</span>, compreensão contextual de tela e memória semântica local. Suas chaves, seus modelos, seus dados invioláveis.
+    </p>
+
+    <div class="hero-cta-group" data-reveal>
+      <a href="#download" class="btn btn-hero-primary">
+        <svg class="btn-os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.64-.78 1.08-1.87.96-2.96-.93.04-2.07.62-2.73 1.39-.58.67-1.09 1.77-.95 2.83 1.04.08 2.1-.5 2.72-1.26z"/></svg>
+        <span>Download para macOS & Windows</span>
+      </a>
+      <a href="#arquitetura" class="btn btn-hero-glass">
+        <span>Conhecer a Engenharia</span>
+      </a>
+    </div>
+
+    <div class="hero-meta-strip" data-reveal>
+      <a href="https://github.com/davifisica671-afk/Refract" target="_blank" rel="noopener noreferrer" class="meta-pill meta-link" id="gh-stars-pill" aria-label="Ver repositório no GitHub">
+        <svg class="meta-star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.94 6.36 6.96.82-5.16 4.73 1.4 6.89L12 17.27 5.86 20.8l1.4-6.89L2.1 9.18l6.96-.82L12 2z"/></svg>
+        <span><strong id="gh-stars">—</strong> stars no GitHub</span>
+      </a>
+      <span class="meta-divider"></span>
+      <span class="meta-pill"><span class="pulse-dot pulse-dot-sm"></span> v<span id="latest-release">2.8</span> · binários assinados</span>
+      <span class="meta-divider"></span>
+      <span class="meta-pill">Source-Available · Open Source</span>
+    </div>
+
+    <!-- Quick-Start Terminal -->
+    <div class="terminal-window" data-reveal>
+      <div class="terminal-header">
+        <div class="traffic-lights">
+          <span class="light red"></span>
+          <span class="light yellow"></span>
+          <span class="light green"></span>
+        </div>
+        <span class="terminal-title">terminal — 1 comando para instalar</span>
+        <button class="copy-btn" id="copy-install" type="button" aria-label="Copiar comando de instalação">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span id="copy-install-label">Copiar</span>
+        </button>
+      </div>
+      <div class="terminal-body">
+        <div class="term-tabs" role="tablist" aria-label="Método de instalação">
+          <button class="term-tab is-active" data-cmd="start https://github.com/davifisica671-afk/Refract/releases/latest" data-hint="# Windows 10/11 · abra a release oficial e escolha o instalador" type="button">Windows</button>
+          <button class="term-tab" data-cmd="open https://github.com/davifisica671-afk/Refract/releases/latest" data-hint="# macOS 12+ · abra a release oficial e escolha o instalador" type="button">macOS</button>
+          <button class="term-tab" data-cmd="git clone https://github.com/davifisica671-afk/Refract.git" data-hint="# a partir do código-fonte · npm install && npm run dev" type="button">Source</button>
+        </div>
+        <div class="term-line">
+          <span class="term-prompt">$</span>
+          <span class="term-cmd" id="install-cmd">start https://github.com/davifisica671-afk/Refract/releases/latest</span>
+          <span class="term-caret" aria-hidden="true"></span>
+        </div>
+        <div class="term-line dim"><span class="term-comment" id="install-hint"># Windows 10/11 · abra a release oficial e escolha o instalador</span></div>
+      </div>
+    </div>
+
+    <!-- UI Mockup / The Glass Overlay -->
+    <div class="hero-device-wrapper" data-reveal>
+      <div class="apple-glass-window">
+        <div class="window-header">
+          <div class="traffic-lights">
+            <span class="light red"></span>
+            <span class="light yellow"></span>
+            <span class="light green"></span>
+          </div>
+          <div class="window-title-tab">
+            <span class="status-indicator"></span>
+            <span>Refract Live Copilot · 380ms · Rust Core</span>
+          </div>
+          <div class="window-tools">
+            <span class="hud-item"><span class="hud-key">⌘</span><span class="hud-key">K</span></span>
+            <span class="stealth-badge">Stealth Ativo</span>
+          </div>
+        </div>
+
+        <div class="window-body">
+          <div class="audio-stream-bar">
+            <div class="stream-channel">
+              <span class="ch-icon">🎙️</span>
+              <span class="ch-name">Mic: Built-in Array</span>
+              <div class="visualizer-bars">
+                <span class="vbar b1"></span><span class="vbar b2"></span><span class="vbar b3"></span>
+                <span class="vbar b4"></span><span class="vbar b5"></span><span class="vbar b6"></span>
+              </div>
+            </div>
+            <div class="stream-divider"></div>
+            <div class="stream-channel">
+              <span class="ch-icon">🔊</span>
+              <span class="ch-name">Sistema: Zoom Conference</span>
+              <div class="visualizer-bars alt">
+                <span class="vbar b3"></span><span class="vbar b6"></span><span class="vbar b2"></span>
+                <span class="vbar b5"></span><span class="vbar b1"></span><span class="vbar b4"></span>
+              </div>
+            </div>
+            <div class="stream-model-tag">
+              <span class="sparkle">✦</span> Claude 3.5 Sonnet / Local Whisper
+            </div>
+          </div>
+
+          <div class="scenario-tabs" role="tablist" aria-label="Cenário de demonstração">
+            <button class="scenario-tab is-active" data-scenario="eng" type="button">💻 Entrevista Técnica</button>
+            <button class="scenario-tab" data-scenario="exec" type="button">📊 Reunião Executiva</button>
+            <button class="scenario-tab" data-scenario="design" type="button">🏗️ System Design</button>
+          </div>
+          <div class="dialogue-flow" id="dialogue-flow">
+            <!-- Conteúdo renderizado via main.js (cenários eng / exec / design) -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Metrics Counter -->
+  <section class="stats-strip">
+    <div class="stat-item">
+      <div class="stat-value">&lt;500ms</div>
+      <div class="stat-label">Latência End-to-End de Áudio</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">100%</div>
+      <div class="stat-label">Local &amp; Privado (BYOK)</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">0</div>
+      <div class="stat-label">Vazamentos ou Servidores Intermediários</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">Rust + C++</div>
+      <div class="stat-label">Captura Nativa com Zero-Copy</div>
+    </div>
+  </section>
+
+  <!-- Core Pillars Section (Apple Bento Grid) -->
+  <section id="experiencia" class="section-container">
+    <div class="section-header" data-reveal>
+      <span class="section-eyebrow">Experiência Imersiva</span>
+      <h2 class="section-title">Design invisível para momentos cruciais.</h2>
+      <p class="section-description">
+        Criado para que você nunca perca o contato visual, a postura ou a linha de raciocínio. A interface flutua sobre qualquer software sem ser detectada em chamadas de vídeo.
+      </p>
+    </div>
+
+    <div class="bento-grid">
+      <!-- Card 1: Invisible Stealth Mode -->
+      <div class="bento-card card-tall" data-reveal>
+        <div class="card-icon-glass">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></svg>
+        </div>
+        <div class="card-content">
+          <span class="card-tag">Totalmente Invisível</span>
+          <h3>Stealth Mode Nativo de Sistema</h3>
+          <p>
+            O Refract usa proteções de janela no nível do sistema operacional (<code>setContentProtection</code>). Mesmo que você compartilhe a tela inteira no Zoom, Google Meet, Teams ou Discord, o overlay do Refract permanece 100% invisível para os outros participantes.
+          </p>
+        </div>
+        <div class="card-preview stealth-demo">
+          <div class="screen-layer public-layer">
+            <span class="layer-title">Visão dos Outros: Desktop Limpo</span>
+          </div>
+          <div class="screen-layer secret-layer">
+            <span class="layer-title">Sua Visão: Respostas &amp; Código ao Vivo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Dual Audio Engine -->
+      <div class="bento-card" data-reveal>
+        <div class="card-icon-glass">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </div>
+        <div class="card-content">
+          <span class="card-tag">Canal Duplo</span>
+          <h3>Separação Total: Sua Voz vs Voz Deles</h3>
+          <p>
+            O motor nativo em Rust separa o que você está falando do áudio emitido pelo sistema. A IA sabe exatamente quem fez a pergunta e molda uma resposta formulada na primeira pessoa para você falar com naturalidade.
+          </p>
+        </div>
+      </div>
+
+      <!-- Card 3: Multimodal Vision & OCR -->
+      <div class="bento-card" data-reveal>
+        <div class="card-icon-glass">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div class="card-content">
+          <span class="card-tag">Visão Contextual</span>
+          <h3>Leitura de Tela &amp; Extensão de Navegador</h3>
+          <p>
+            Compartilhe instantaneamente trechos de problemas no LeetCode, gráficos do Figma ou trechos de PRs com um único atalho. O Refract extrai e compreende o contexto visual e estruturado sem esforço.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technical Architecture -->
+  <section id="arquitetura" class="section-container">
+    <div class="section-header" data-reveal>
+      <span class="section-eyebrow">Engenharia de Precisão</span>
+      <h2 class="section-title">Construído em código nativo, não em promessas.</h2>
+      <p class="section-description">
+        Como conseguimos derrubar a latência tradicional de 3–5 segundos para menos de 500 milissegundos com estabilidade industrial.
+      </p>
+    </div>
+
+    <div class="tech-spec-grid">
+      <div class="spec-card" data-reveal>
+        <div class="spec-number">01</div>
+        <h4>Rust Audio Pipeline (NAPI-RS)</h4>
+        <p>Captura direta de CoreAudio no macOS e WASAPI no Windows. Zero-copy de memória até a conversão para PCM 16kHz linear.</p>
+      </div>
+
+      <div class="spec-card" data-reveal>
+        <div class="spec-number">02</div>
+        <h4>SQLite + sqlite-vec (RAG Local)</h4>
+        <p>Todas as suas reuniões viram vetores salvos localmente. Pesquisa semântica em microssegundos sem enviar seu histórico para servidores de terceiros.</p>
+      </div>
+
+      <div class="spec-card" data-reveal>
+        <div class="spec-number">03</div>
+        <h4>Bring Your Own Key &amp; Model Agnostic</h4>
+        <p>Conecte Claude 3.5, Gemini 2.0 Flash/Pro, GPT-4o, Groq Llama 3.3 ou modelos 100% offline via Ollama. Pague apenas os tokens de custo bruto.</p>
+      </div>
+
+      <div class="spec-card" data-reveal>
+        <div class="spec-number">04</div>
+        <h4>DNS Cache &amp; WebSocket Relay Resiliente</h4>
+        <p>Comunicação por streaming contínuo sem renegotiation de SSL a cada frase falada, garantindo resposta instantânea aos primeiros fonemas.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bring Your Own Model -->
+  <section id="modelos" class="section-container">
+    <div class="section-header" data-reveal>
+      <span class="section-eyebrow">Bring Your Own Key</span>
+      <h2 class="section-title">Seus modelos. Suas chaves. Zero markup.</h2>
+      <p class="section-description">
+        Conecte qualquer provedor com sua própria chave de API — ou rode 100% offline com Ollama + Whisper local. O Refract nunca toca nos seus tokens.
+      </p>
+    </div>
+
+    <div class="model-grid" data-reveal>
+      <div class="model-card">
+        <div class="model-logo model-anthropic">✦</div>
+        <div class="model-info"><strong>Claude 3.5 Sonnet</strong><span>Anthropic · raciocínio</span></div>
+        <span class="model-pill">Recomendado</span>
+      </div>
+      <div class="model-card">
+        <div class="model-logo model-openai">❖</div>
+        <div class="model-info"><strong>GPT-4o</strong><span>OpenAI · multimodal</span></div>
+        <span class="model-pill">Popular</span>
+      </div>
+      <div class="model-card">
+        <div class="model-logo model-gemini">✧</div>
+        <div class="model-info"><strong>Gemini 2.0 Flash</strong><span>Google · baixa latência</span></div>
+        <span class="model-pill">Rápido</span>
+      </div>
+      <div class="model-card">
+        <div class="model-logo model-groq">⚡</div>
+        <div class="model-info"><strong>Llama 3.3 70B</strong><span>Groq · inferência ultra-rápida</span></div>
+        <span class="model-pill">Custo baixo</span>
+      </div>
+      <div class="model-card">
+        <div class="model-logo model-ollama">🦙</div>
+        <div class="model-info"><strong>Ollama Local</strong><span>DeepSeek-R1 · Qwen · 100% offline</span></div>
+        <span class="model-pill model-pill-offline">Offline</span>
+      </div>
+      <div class="model-card">
+        <div class="model-logo model-whisper">🎙️</div>
+        <div class="model-info"><strong>Whisper Local</strong><span>Transcrição on-device</span></div>
+        <span class="model-pill model-pill-offline">Offline</span>
+      </div>
+    </div>
+
+    <p class="model-footnote" data-reveal>
+      STT em streaming: Deepgram · OpenAI Realtime · Google Cloud Speech · ElevenLabs · Soniox · Whisper local.
+    </p>
+  </section>
+
+  <!-- Zero-Leak Privacy -->
+  <section id="privacidade" class="section-container">
+    <div class="section-header" data-reveal>
+      <span class="section-eyebrow">Arquitetura Zero-Leak</span>
+      <h2 class="section-title">Nada sai da sua máquina sem a sua chave.</h2>
+      <p class="section-description">
+        Áudio, tela e memória semântica vivem no seu disco. Sem servidor intermediário, sem gravação em nuvem, sem telemetria.
+      </p>
+    </div>
+
+    <div class="privacy-grid">
+      <div class="privacy-card" data-reveal>
+        <div class="privacy-icon">🔒</div>
+        <h4>On-device first</h4>
+        <p>Transcrição, OCR e RAG vetorial (SQLite + sqlite-vec) rodam localmente. O histórico de reuniões nunca atravessa nossa infraestrutura — porque ela não existe.</p>
+      </div>
+      <div class="privacy-card" data-reveal>
+        <div class="privacy-icon">🙈</div>
+        <h4>Stealth de verdade</h4>
+        <p><code>setContentProtection</code> no nível do SO. Compartilhe a tela inteira no Zoom, Meet ou Teams: os outros veem um desktop limpo.</p>
+      </div>
+      <div class="privacy-card" data-reveal>
+        <div class="privacy-icon">🔑</div>
+        <h4>BYOK + licenças auditáveis</h4>
+        <p>Suas chaves ficam no cofre local do sistema. Licenciamento via chaves Ed25519 assinadas — código source-available para auditoria.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison Matrix -->
+  <section id="comparativo" class="section-container">
+    <div class="section-header" data-reveal>
+      <span class="section-eyebrow">Transparência Radical</span>
+      <h2 class="section-title">Por que o Refract redefine a categoria.</h2>
+      <p class="section-description">
+        Enquanto concorrentes cobram mensalidades caras e guardam gravações das suas reuniões em bancos vulneráveis na nuvem, o Refract devolve o controle a você.
+      </p>
+    </div>
+
+    <div class="table-wrapper" data-reveal>
+      <table class="apple-table">
+        <thead>
+          <tr>
+            <th>Recurso &amp; Arquitetura</th>
+            <th class="col-highlight">Refract</th>
+            <th>Cluely</th>
+            <th>LockedIn AI</th>
+            <th>Final Round AI</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Preço</strong></td>
+            <td class="col-highlight"><span class="pill-green">$0 Inicial / BYOK</span></td>
+            <td>$20 / mês</td>
+            <td>$55–$70 / mês</td>
+            <td>$149 / mês</td>
+          </tr>
+          <tr>
+            <td><strong>Privacidade dos Dados</strong></td>
+            <td class="col-highlight"><strong>100% On-Device</strong></td>
+            <td>Servidor na nuvem</td>
+            <td>Servidor na nuvem</td>
+            <td>Servidor na nuvem</td>
+          </tr>
+          <tr>
+            <td><strong>Histórico de Vazamentos</strong></td>
+            <td class="col-highlight"><span class="pill-green">Zero</span></td>
+            <td><span class="pill-red">83.000 usuários vazados</span></td>
+            <td>Desconhecido</td>
+            <td>Desconhecido</td>
+          </tr>
+          <tr>
+            <td><strong>Invisibilidade em Compartilhamento</strong></td>
+            <td class="col-highlight"><strong>Sim (Nativo OS)</strong></td>
+            <td>Limitado</td>
+            <td>Parcial</td>
+            <td>Visível em tarefas</td>
+          </tr>
+          <tr>
+            <td><strong>Suporte a LLM Local (Offline)</strong></td>
+            <td class="col-highlight"><strong>Sim (Ollama / Whisper)</strong></td>
+            <td>Não</td>
+            <td>Não</td>
+            <td>Não</td>
+          </tr>
+          <tr>
+            <td><strong>Código Auditável</strong></td>
+            <td class="col-highlight"><strong>Sim (Source-Available)</strong></td>
+            <td>Proprietário Fechado</td>
+            <td>Proprietário Fechado</td>
+            <td>Proprietário Fechado</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="section-container faq-section">
+    <div class="section-header" data-reveal>
+      <span class="section-eyebrow">Perguntas Frequentes</span>
+      <h2 class="section-title">Tudo o que você precisa saber.</h2>
+    </div>
+
+    <div class="faq-list" data-reveal>
+      <details class="faq-item" open>
+        <summary>Como o Stealth Mode funciona de verdade?</summary>
+        <p>O Refract usa <code>setContentProtection</code> no nível do sistema operacional. A janela do overlay é marcada como conteúdo protegido — o compositor do SO a exclui de qualquer captura de tela ou compartilhamento (Zoom, Meet, Teams, Discord), enquanto ela continua visível para você.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Ele é detectado pelo Zoom / Teams / Meet?</summary>
+        <p>Não. O Refract não injeta código em outros processos nem usa hooks detectáveis — é apenas uma janela protegida pelo SO com captura de áudio via APIs nativas (CoreAudio / WASAPI). Não há driver, DLL injetada ou overlay de jogo para ser sinalizado.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Preciso de internet para usar?</summary>
+        <p>Depende do modo. Com Ollama + Whisper local, tudo roda 100% offline. Com provedores de nuvem (Claude, GPT-4o, Gemini), você precisa de internet apenas para as chamadas de API — o áudio e a tela nunca passam por nossos servidores.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Meu áudio é gravado ou enviado para algum servidor?</summary>
+        <p>Não. A transcrição acontece em streaming direto para o provedor de STT que você escolheu (ou localmente, com Whisper). O Refract não mantém servidor intermediário, não grava arquivos de áudio e tem telemetria zero por padrão.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Quanto custa? Preciso de assinatura?</summary>
+        <p>O Refract é source-available e usa o modelo Bring Your Own Key: você paga apenas os tokens de custo bruto ao provedor que escolher. Sem mensalidade cara, sem markup sobre seus tokens.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Quais plataformas são suportadas?</summary>
+        <p>macOS 12+ (Apple Silicon e Intel) e Windows 10/11. Binários assinados, com auto-update via GitHub Releases.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Download & CTA Section -->
+  <section id="download" class="cta-banner" data-reveal>
+    <div class="cta-glow"></div>
+    <div class="cta-inner">
+      <div class="cta-logo">
+        <img src="../assets/icon.png" alt="Refract Icon" width="80" height="80">
+      </div>
+      <h2 class="cta-title">Assuma o controle de cada conversa.</h2>
+      <p class="cta-sub">
+        Baixe o Refract hoje mesmo. Sem cadastro obrigatório, sem cartão de crédito, sem espionagem corporativa.
+      </p>
+      
+      <div class="cta-buttons">
+        <a href="https://github.com/davifisica671-afk/Refract/releases/latest" class="btn btn-hero-primary">
+          <svg class="btn-os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.64-.78 1.08-1.87.96-2.96-.93.04-2.07.62-2.73 1.39-.58.67-1.09 1.77-.95 2.83 1.04.08 2.1-.5 2.72-1.26z"/></svg>
+          <span>Download macOS (Apple Silicon / Intel)</span>
+        </a>
+        <a href="https://github.com/davifisica671-afk/Refract/releases/latest" class="btn btn-hero-glass">
+          <svg class="btn-os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.801"/></svg>
+          <span>Download Windows 10/11</span>
+        </a>
+      </div>
+
+      <div class="cta-footnote">
+        Requer macOS 12+ ou Windows 10/11. Binários assinados e auditáveis.
+      </div>
+    </div>
+  </section>
+
+  <!-- Apple Minimal Dark Footer -->
+  <footer class="footer-container">
+    <div class="footer-inner">
+      <div class="footer-brand-col">
+        <div class="footer-logo">
+          <img src="../assets/icon.png" alt="Refract" width="28" height="28">
+          <span>Refract</span>
+        </div>
+        <p class="footer-tagline">
+          The private, on-device AI copilot for high-stakes interviews &amp; meetings.
+        </p>
+        <div class="footer-copy">
+          &copy; 2026 Refract Assistant. Licença Source-Available.
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h5>Produto</h5>
+        <a href="#experiencia">Experiência</a>
+        <a href="#arquitetura">Arquitetura Rust</a>
+        <a href="#comparativo">Tabela Comparativa</a>
+        <a href="#download">Downloads</a>
+      </div>
+
+      <div class="footer-col">
+        <h5>Segurança &amp; Código</h5>
+        <a href="https://github.com/davifisica671-afk/Refract" target="_blank">Código no GitHub</a>
+        <a href="#privacidade">Arquitetura Zero-Leak</a>
+        <a href="https://t.me/refractaichat" target="_blank">Comunidade Telegram</a>
+      </div>
+
+      <div class="footer-col">
+        <h5>Filosofia</h5>
+        <p class="footer-manifesto">
+          "Privacidade não é um recurso ou ajuste de configuração; é a fundação sobre a qual cada linha de código deve ser escrita."
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Conheça a arquitetura local e os recursos de IA do Refract.">
+  <title>Produto — Refract</title>
+  <link rel="icon" type="image/png" href="../assets/icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="pages.css">
+</head>
+<body class="site-page">
+  <nav class="nav-container" aria-label="Navegação principal">
+    <div class="nav-inner">
+      <a href="index.html" class="brand"><span class="logo-wrapper"><img src="../assets/icon.png" alt="" class="brand-icon"></span><span class="brand-text">Refract</span><span class="badge-tag">v2.9</span></a>
+      <div class="nav-links"><a href="product.html" class="nav-link is-current">Produto</a><a href="use-cases.html" class="nav-link">Casos de uso</a><a href="privacy.html" class="nav-link">Privacidade</a><a href="index.html#arquitetura" class="nav-link">Arquitetura</a></div>
+      <div class="nav-actions"><a href="https://github.com/davifisica671-afk/Refract" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">GitHub</a><a href="download.html" class="btn btn-primary">Baixar</a></div>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" data-menu-toggle>☰</button>
+    </div>
+    <div class="mobile-menu" data-mobile-menu><a href="product.html">Produto</a><a href="use-cases.html">Casos de uso</a><a href="privacy.html">Privacidade</a><a href="download.html">Baixar Refract</a></div>
+  </nav>
+
+  <main>
+    <header class="page-hero">
+      <div class="hero-orbit" aria-hidden="true"></div><i class="hero-particle one" aria-hidden="true"></i><i class="hero-particle two" aria-hidden="true"></i><i class="hero-particle three" aria-hidden="true"></i>
+      <div class="page-hero-copy" data-reveal>
+        <span class="page-kicker">Uma camada de inteligência, sem interromper você</span>
+        <h1 class="page-title">Feito para acompanhar a <span class="gradient-word">conversa.</span></h1>
+        <p class="page-lede">O Refract combina áudio ao vivo, contexto de tela e memória local para ajudar no momento em que uma boa resposta realmente importa.</p>
+        <div class="page-actions"><a href="download.html" class="btn btn-page-primary" data-magnetic>Baixar Refract <span>↗</span></a><a href="#fluxo" class="btn btn-page-ghost">Ver como funciona</a></div>
+        <div class="hero-statuses"><span class="hero-status"><i></i> áudio em tempo real</span><span class="hero-status"><i></i> contexto sob demanda</span><span class="hero-status"><i></i> radar local de conversa</span></div>
+      </div>
+    </header>
+
+    <section class="section-shell tight" id="fluxo">
+      <div class="section-heading" data-reveal><span class="section-kicker">A experiência</span><h2 class="section-title">Menos troca de contexto. Mais presença.</h2><p class="section-description">Uma interface discreta reúne o que está sendo dito, identifica o que mudou na conversa e oferece ajuda somente quando você decide usar.</p></div>
+      <div class="product-stage" data-reveal>
+        <div class="product-stage-header"><span class="stage-dots"><b></b><b></b><b></b></span><span>Refract · sessão ao vivo</span><span>380 ms</span></div>
+        <div class="product-stage-content">
+          <div class="live-thread">
+            <article class="thread-line"><div class="thread-meta"><span class="thread-person">ENTREVISTADOR</span><span>14:02:19</span></div><p>Como você manteria consistência eventual sem bloquear o checkout quando a fila atinge throttling?</p></article>
+            <article class="thread-line answer"><div class="thread-meta"><span class="thread-person">REFRACT · RESPOSTA SUGERIDA</span><span>contexto ativo</span></div><p>Começaria com uma transactional outbox: o pedido e o evento são persistidos na mesma transação. A publicação para a fila fica fora do caminho síncrono.</p></article>
+            <article class="thread-line"><div class="thread-meta"><span class="thread-person">CONTEXTO</span><span>capturado localmente</span></div><p>Modo: Engenharia · referências do projeto disponíveis · nenhuma captura enviada sem sua ação.</p></article>
+          </div>
+          <aside class="radar-panel"><div class="radar-chip"><small>✦ Conversation Radar</small><strong>Pergunta detectada</strong><p>O sinal fica local até você pedir uma resposta.</p></div><div class="signal-row"><span>Áudio do sistema</span><b>LIVE</b></div><div class="signal-row"><span>Contexto da página</span><b>READY</b></div><div class="signal-row"><span>Memória da sessão</span><b>LOCAL</b></div></aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-shell">
+      <div class="section-heading" data-reveal><span class="section-kicker">Sistemas que trabalham juntos</span><h2 class="section-title">A assistência certa para cada momento.</h2></div>
+      <div class="feature-ledger">
+        <article class="feature-row" data-reveal><span class="feature-index">01</span><div><h3>Escuta os dois lados</h3><p>O Refract trabalha com microfone e áudio do sistema para separar a pergunta da resposta que você está preparando.</p></div><div class="feature-mini-visual"><span class="wave-mini"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div></article>
+        <article class="feature-row" data-reveal><span class="feature-index">02</span><div><h3>Entende o contexto quando você pede</h3><p>Inclua uma captura ou uma página ativa para dar à IA referências concretas, sem carregar a conversa com dados irrelevantes.</p></div><div class="feature-mini-visual"><span class="memory-orb"></span></div></article>
+        <article class="feature-row" data-reveal><span class="feature-index">03</span><div><h3>Percebe mudanças na conversa</h3><p>O Conversation Radar sinaliza perguntas, decisões e próximos passos localmente. Um clique transforma esse sinal em uma resposta útil.</p></div><div class="feature-mini-visual"><span class="radar-mini"></span></div></article>
+      </div>
+    </section>
+
+    <section class="section-shell"><div class="signal-strip" data-reveal><div><strong>Local</strong><span>Transcrição e sinais de conversa podem permanecer na máquina.</span></div><div><strong>Escolhido</strong><span>Você decide quando anexar contexto e quando chamar um provedor.</span></div><div><strong>Fluido</strong><span>Um overlay focado no que você precisa dizer agora.</span></div></div></section>
+  </main>
+
+  <footer class="site-footer"><div class="footer-grid"><div class="footer-brand"><a href="index.html" class="brand"><span class="logo-wrapper"><img src="../assets/icon.png" alt="" class="brand-icon"></span><span class="brand-text">Refract</span></a><p>Inteligência de conversa, na sua máquina e no seu ritmo.</p></div><div><h3 class="footer-heading">Produto</h3><div class="footer-links"><a href="product.html">Visão geral</a><a href="use-cases.html">Casos de uso</a><a href="download.html">Download</a></div></div><div><h3 class="footer-heading">Confiança</h3><div class="footer-links"><a href="privacy.html">Privacidade</a><a href="../SECURITY.md">Segurança</a><a href="../PRIVACY.md">Política</a></div></div><div><h3 class="footer-heading">Código</h3><div class="footer-links"><a href="https://github.com/davifisica671-afk/Refract">GitHub</a><a href="../CHANGELOG.md">Changelog</a></div></div></div><div class="footer-bottom"><span>© 2026 Refract</span><span>Construído para conversas que importam.</span></div></footer>
+  <script src="site.js"></script>
+</body>
+</html>
