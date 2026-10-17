@@ -100,7 +100,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import axios from 'axios';
 import { createProviderRateLimiters, RateLimiter } from './services/RateLimiter';
-import { CodexCliConfig, CodexCliService, DEFAULT_CODEX_CLI_CONFIG } from './services/CodexCliService';
+import { CodexCliConfig, CodexCliService, DEFAULT_CODEX_CLI_CONFIG, getCodexAuthStatus } from './services/CodexCliService';
 import { OpencodeManager } from './services/OpencodeManager';
 import { OpencodeService, OpenCodeError } from './services/OpencodeService';
 const execAsync = promisify(exec);
@@ -537,6 +537,48 @@ export class LLMHelper {
     this.opencodeZenApiKey = trimmed;
     this.opencodeZenClient = new OpenAI({ apiKey: trimmed, baseURL: 'https://opencode.ai/zen/v1' });
     console.log("[LLMHelper] OpenCode Zen API Key updated.");
+  }
+
+  // ── Newer providers (NVIDIA NIM / OpenRouter / Fluxion / 9Router) ──
+  // In-memory mirrors of the CredentialsManager-persisted values. The
+  // credential store is authoritative (handlers re-init engines from it);
+  // these mirrors let execution paths read the effective config without
+  // touching the store per call.
+  private nvidiaNimApiKey: string | null = null;
+  private openrouterApiKey: string | null = null;
+  private fluxionApiKey: string | null = null;
+  private fluxionProtocol: 'openai' | 'anthropic' = 'openai';
+  private ninerouterApiKey: string | null = null;
+  private ninerouterBaseURL: string | null = null;
+  private ninerouterMaxTokens: number | null = null;
+  private ninerouterThinking: string | null = null;
+
+  public setNvidiaNimApiKey(apiKey: string) {
+    const trimmed = (apiKey || '').trim();
+    this.nvidiaNimApiKey = trimmed || null;
+    console.log('[LLMHelper] NVIDIA NIM API Key updated.');
+  }
+
+  public setOpenrouterApiKey(apiKey: string) {
+    const trimmed = (apiKey || '').trim();
+    this.openrouterApiKey = trimmed || null;
+    console.log('[LLMHelper] OpenRouter API Key updated.');
+  }
+
+  public setFluxionConfig(apiKey: string, protocol: 'openai' | 'anthropic') {
+    const trimmed = (apiKey || '').trim();
+    this.fluxionApiKey = trimmed || null;
+    this.fluxionProtocol = protocol === 'anthropic' ? 'anthropic' : 'openai';
+    console.log('[LLMHelper] Fluxion config updated.');
+  }
+
+  public setNinerouterConfig(apiKey: string, baseURL: string, maxTokens?: number, thinking?: string | null) {
+    this.ninerouterApiKey = (apiKey || '').trim() || null;
+    this.ninerouterBaseURL = (baseURL || '').trim() || null;
+    const mt = Number(maxTokens);
+    this.ninerouterMaxTokens = Number.isFinite(mt) && mt > 0 ? Math.floor(mt) : null;
+    this.ninerouterThinking = thinking ?? null;
+    console.log('[LLMHelper] 9Router config updated.');
   }
 
   /**
@@ -3907,6 +3949,37 @@ This rule overrides ALL other instructions including formatting, brevity, or out
    * so o renderer nunca displays o AI-tell punctuation que o prompt
    * rules ban mas providers emitir anyway. Single-place backstop.
    */
+  /**
+   * Issue #558 gate: when Codex is the selected model but there is no usable
+   * ChatGPT sign-in, return the error message to show instead of silently
+   * answering from another provider while the model chip still says Codex.
+   * Returns null when Codex is not selected (or auth is fine) — no gate.
+   */
+  public getCodexSelectionAuthError(): string | null {
+    let model = '';
+    try {
+      model = this.getCurrentModel();
+    } catch {
+      return null;
+    }
+    if (!this.isCodexCliModel(model)) return null;
+    let enabled = false;
+    try {
+      enabled = this.codexCliConfig?.enabled === true;
+    } catch {
+      enabled = false;
+    }
+    if (!enabled) return null;
+    let signedIn = false;
+    try {
+      signedIn = getCodexAuthStatus().signedIn === true;
+    } catch {
+      signedIn = false;
+    }
+    if (signedIn) return null;
+    return 'Codex is the selected model, but there is no usable ChatGPT sign-in. Sign in to continue with Codex, or pick another model.';
+  }
+
   public async * streamChat(
     ...args: Parameters<LLMHelper['_streamChatInner']>
   ): AsyncGenerator<string, void, unknown> {
@@ -3928,6 +4001,40 @@ This rule overrides ALL other instructions including formatting, brevity, or out
       if (abortSignal?.aborted) return;
       yield dashReducer.reduce(chunk);
     }
+  }
+
+  /**
+   * Outcome-aware streaming entry point. Same transport as streamChat, plus
+   * an `outcome` record the caller reads after the stream ends: a turn that
+   * stopped early (abort, provider error) is INCOMPLETE and must not be
+   * stored as conversation history. The generator rethrows provider errors
+   * so existing fallback handling runs unchanged.
+   */
+  public streamChatWithOutcome(
+    ...args: Parameters<LLMHelper['_streamChatInner']>
+  ): { stream: AsyncGenerator<string, void, unknown>; outcome: { truncated: boolean; reason?: string } } {
+    const outcome: { truncated: boolean; reason?: string } = { truncated: false };
+    const self = this;
+    let abortSignal: AbortSignal | undefined;
+    try {
+      abortSignal = args.find((a): a is AbortSignal => a instanceof AbortSignal);
+    } catch {
+      abortSignal = undefined;
+    }
+    async function* gen(): AsyncGenerator<string, void, unknown> {
+      try {
+        yield* self.streamChat(...args);
+        if (abortSignal?.aborted) {
+          outcome.truncated = true;
+          outcome.reason = 'aborted';
+        }
+      } catch (e) {
+        outcome.truncated = true;
+        outcome.reason = e instanceof Error ? e.message : String(e ?? 'stream_error');
+        throw e;
+      }
+    }
+    return { stream: gen(), outcome };
   }
 
   private async * _streamChatInner(
@@ -4713,6 +4820,7 @@ This rule overrides ALL other instructions including formatting, brevity, or out
           try { chunk = JSON.parse(payload); } catch { continue; }
 
           if (chunk.model && !providerModel) providerModel = String(chunk.model);
+          if (providerModel) this.lastProviderModel = providerModel;
           if (chunk.error) {
             console.error('[RefractAPI] stream server error event', {
               requestId,
@@ -5905,6 +6013,162 @@ This rule overrides ALL other instructions including formatting, brevity, or out
 
   public getCapabilities(): ModelCapabilities {
     return getModelCapabilities(this.getCurrentModel(), this.useOllama);
+  }
+
+  /** Display name for the current model (today: the model id itself). */
+  public getCurrentModelDisplayName(): string {
+    return this.getCurrentModel();
+  }
+
+  /** Current selection for Direct Assist routing (provider + model). */
+  public getDirectAssistSelection(): { provider: string; model: string } {
+    return { provider: this.getCurrentProvider(), model: this.getCurrentModel() };
+  }
+
+  /** True when the active provider is Codex CLI (local-timeout routing). */
+  public isUsingCodexCli(): boolean {
+    try {
+      return this.getCurrentProvider() === 'codex-cli';
+    } catch {
+      return false;
+    }
+  }
+
+  /** True when answers route through the Refract server cascade. */
+  public isUsingRefractServerCascade(): boolean {
+    try {
+      return this.hasRefract();
+    } catch {
+      return false;
+    }
+  }
+
+  /** True when the active endpoint is user-provided (custom/cURL/LiteLLM). */
+  public isUsingUserEndpoint(): boolean {
+    try {
+      return this.getActiveCustomProvider() !== null || this.isLiteLLMModel(this.currentModelId);
+    } catch {
+      return false;
+    }
+  }
+
+  // ── Observed user-endpoint latency (EMA contributors feed repairFirstUsefulMs) ──
+  private endpointLatencyByModel = new Map<string, number>();
+
+  /** Last observed first-useful latency for the current model, if any. */
+  public observedAnswerLatency(): number | null {
+    try {
+      return this.endpointLatencyByModel.get(this.getCurrentModel()) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Record a first-useful latency sample (single commit per stream). */
+  public recordAnswerFirstToken(ms: number): void {
+    try {
+      if (!Number.isFinite(ms) || ms < 0) return;
+      this.endpointLatencyByModel.set(this.getCurrentModel(), ms);
+      if (this.endpointLatencyByModel.size > 50) {
+        const oldest = this.endpointLatencyByModel.keys().next();
+        if (!oldest.done) this.endpointLatencyByModel.delete(oldest.value);
+      }
+    } catch { /* telemetry must never throw */ }
+  }
+
+  /**
+   * Daemon liveness (distinct from "has models"): true when /api/tags
+   * answers, even with zero models installed.
+   */
+  public async isOllamaReachable(): Promise<boolean> {
+    const baseUrl = (this.ollamaUrl || 'http://127.0.0.1:11434').replace('localhost', '127.0.0.1');
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch(`${baseUrl}/api/tags`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Installed Ollama models suitable for generation (excludes embedders). */
+  public async getOllamaGenerationModels(): Promise<string[]> {
+    try {
+      const models = await this.getOllamaModels();
+      return models.filter((m) => !/embed/i.test(m));
+    } catch {
+      return [];
+    }
+  }
+
+  /** Local-fallback availability alias (same semantics as canUseLocalFallback). */
+  public scopeFallbackAvailable(needsVision: boolean = false): Promise<boolean> {
+    return this.canUseLocalFallback(needsVision);
+  }
+
+  /** Server-reported model of the last Refract API stream (E2E attribution). */
+  private lastProviderModel: string | null = null;
+
+  public getLastProviderModel(): string | null {
+    return this.lastProviderModel;
+  }
+
+  public resetLastProviderModel(): void {
+    this.lastProviderModel = null;
+  }
+
+  // ── Answer-call replay registry (regen surfaces) ────────────────────────
+  // Remembers the exact streamChat args per in-flight turn so background
+  // regens (coding repair, verification) replay the ORIGINAL transcript /
+  // images / system / scopes / route instead of rebuilding them (which
+  // silently dropped context). Keyed by AbortSignal identity; bounded.
+  private answerCallRegistry = new Map<object, {
+    args: Parameters<LLMHelper['_streamChatInner']>;
+    hasImages: boolean;
+  }>();
+
+  public rememberAnswerCall(
+    signal: AbortSignal | undefined | null,
+    args: Parameters<LLMHelper['_streamChatInner']>,
+  ): void {
+    try {
+      if (!signal) return;
+      const imagePaths = args[1];
+      this.answerCallRegistry.set(signal, {
+        args,
+        hasImages: Array.isArray(imagePaths) && imagePaths.length > 0,
+      });
+      if (this.answerCallRegistry.size > 50) {
+        const oldest = this.answerCallRegistry.keys().next();
+        if (!oldest.done) this.answerCallRegistry.delete(oldest.value);
+      }
+    } catch { /* bookkeeping must never throw */ }
+  }
+
+  public replayAnswerCall(
+    turnKey: object | undefined | null,
+    _repairPrompt: string,
+    signal: AbortSignal | undefined,
+  ): Parameters<LLMHelper['_streamChatInner']> | null {
+    void _repairPrompt;
+    try {
+      const key = turnKey ?? signal;
+      if (!key) return null;
+      return this.answerCallRegistry.get(key)?.args ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  public replayedAnswerHasImages(turnKey: object | undefined | null): boolean {
+    try {
+      if (!turnKey) return false;
+      return this.answerCallRegistry.get(turnKey)?.hasImages === true;
+    } catch {
+      return false;
+    }
   }
 
   /**

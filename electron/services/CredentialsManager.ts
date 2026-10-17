@@ -60,6 +60,18 @@ export interface StoredCredentials {
     openaiApiKey?: string;
     claudeApiKey?: string;
     deepseekApiKey?: string;
+    // Newer providers (persisted like the ones above; added when their IPC
+    // surfaces landed — getters/setters below).
+    nvidiaNimApiKey?: string;
+    openrouterApiKey?: string;
+    fluxionApiKey?: string;
+    fluxionProtocol?: 'openai' | 'anthropic';
+    ninerouterApiKey?: string;
+    ninerouterBaseURL?: string;
+    ninerouterMaxTokens?: number;
+    ninerouterThinking?: string | null;
+    ninerouterModels?: string[];
+    ninerouterVisionModels?: string[];
     litellmApiKey?: string;
     litellmBaseURL?: string;
     /** Manual saída ceiling para LiteLLM-proxied models. Unset → Auto (per-model via /model/info). */
@@ -370,6 +382,116 @@ export class CredentialsManager {
         console.log('[CredentialsManager] DeepSeek API Key updated');
     }
 
+    // ── Newer providers (NVIDIA NIM / OpenRouter / Fluxion / 9Router) ──────
+    // Same storage contract as the providers above. The boolean setters are
+    // atomic (R-24): the write is verified before the in-memory value is
+    // kept, so a degraded store reports refusal instead of a phantom save.
+
+    public getNvidiaNimApiKey(): string | undefined {
+        return this.credentials.nvidiaNimApiKey;
+    }
+
+    public setNvidiaNimApiKey(key: string): void {
+        this.credentials.nvidiaNimApiKey = (key || '').trim() || undefined;
+        this.saveCredentials();
+        console.log('[CredentialsManager] NVIDIA NIM API Key updated');
+    }
+
+    public getOpenrouterApiKey(): string | undefined {
+        return this.credentials.openrouterApiKey;
+    }
+
+    public setOpenrouterApiKey(key: string): boolean {
+        const trimmed = (key || '').trim();
+        const prev = this.credentials.openrouterApiKey;
+        this.credentials.openrouterApiKey = trimmed || undefined;
+        if (!this.saveCredentials()) {
+            this.credentials.openrouterApiKey = prev;
+            return false;
+        }
+        console.log('[CredentialsManager] OpenRouter API Key updated');
+        return true;
+    }
+
+    public getFluxionApiKey(): string | undefined {
+        return this.credentials.fluxionApiKey;
+    }
+
+    public setFluxionApiKey(key: string): boolean {
+        const trimmed = (key || '').trim();
+        const prev = this.credentials.fluxionApiKey;
+        this.credentials.fluxionApiKey = trimmed || undefined;
+        if (!this.saveCredentials()) {
+            this.credentials.fluxionApiKey = prev;
+            return false;
+        }
+        console.log('[CredentialsManager] Fluxion API Key updated');
+        return true;
+    }
+
+    public getFluxionProtocol(): 'openai' | 'anthropic' | undefined {
+        return this.credentials.fluxionProtocol;
+    }
+
+    public setFluxionProtocol(protocol: 'openai' | 'anthropic'): boolean {
+        const prev = this.credentials.fluxionProtocol;
+        this.credentials.fluxionProtocol = protocol;
+        if (!this.saveCredentials()) {
+            this.credentials.fluxionProtocol = prev;
+            return false;
+        }
+        console.log('[CredentialsManager] Fluxion protocol updated');
+        return true;
+    }
+
+    public getNinerouterApiKey(): string | undefined {
+        return this.credentials.ninerouterApiKey;
+    }
+
+    public getNinerouterBaseURL(): string | undefined {
+        return this.credentials.ninerouterBaseURL;
+    }
+
+    public getNinerouterMaxTokens(): number | undefined {
+        return this.credentials.ninerouterMaxTokens;
+    }
+
+    public getNinerouterThinking(): string | null | undefined {
+        return this.credentials.ninerouterThinking;
+    }
+
+    public setNinerouterConfig(apiKey: string, baseURL: string, maxTokens?: number, thinking?: string | null): void {
+        // Blank apiKey on re-save means "keep the stored one" (masked field).
+        const trimmedKey = (apiKey || '').trim();
+        if (trimmedKey) this.credentials.ninerouterApiKey = trimmedKey;
+        else if (!(baseURL || '').trim()) this.credentials.ninerouterApiKey = undefined;
+        this.credentials.ninerouterBaseURL = (baseURL || '').trim() || undefined;
+        const mt = Number(maxTokens);
+        this.credentials.ninerouterMaxTokens = Number.isFinite(mt) && mt > 0 ? Math.floor(mt) : undefined;
+        this.credentials.ninerouterThinking = thinking ?? undefined;
+        this.saveCredentials();
+        console.log('[CredentialsManager] 9Router config updated');
+    }
+
+    public setNinerouterModels(models: string[]): void {
+        this.credentials.ninerouterModels = Array.isArray(models) ? models : [];
+        this.saveCredentials();
+    }
+
+    public setNinerouterVisionModels(models: string[]): void {
+        this.credentials.ninerouterVisionModels = Array.isArray(models) ? models : [];
+        this.saveCredentials();
+    }
+
+    /**
+     * Settles when hosted-retrieval activation triggered by a key save has
+     * landed. Hosted activation itself is unbuilt — resolves immediately so
+     * key-save flows proceed to engine re-init without hanging.
+     */
+    public async whenHostedRetrievalSettled(): Promise<void> {
+        return;
+    }
+
     public setOpencodeZenApiKey(key: string): void {
         const trimmed = key.trim();
         this.credentials.opencodeZenApiKey = trimmed || undefined;
@@ -417,10 +539,11 @@ export class CredentialsManager {
         console.log('[CredentialsManager] LiteLLM config updated');
     }
 
-    public setGoogleServiceAccountPath(filePath: string): void {
+    public setGoogleServiceAccountPath(filePath: string): boolean {
         this.credentials.googleServiceAccountPath = filePath;
-        this.saveCredentials();
+        const saved = this.saveCredentials();
         console.log('[CredentialsManager] Google Service Account path updated');
+        return saved;
     }
 
     public setSttProvider(provider: 'none' | 'google' | 'groq' | 'openai' | 'deepgram' | 'elevenlabs' | 'azure' | 'ibmwatson' | 'soniox' | 'refract' | 'local-whisper'): void {

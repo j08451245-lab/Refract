@@ -40,7 +40,23 @@ export type PiTelemetryEvent =
   // Groq-scout E2E sprint 2026-06-14: assistant-voice identity/refusal misfire gproteger
   | 'pi_assistant_voice_misfire_repaired'
   // Proactive intervention: struggle/stuck detection trigger.
-  | 'proactive_struggle_detected';
+  | 'proactive_struggle_detected'
+  // OKF profile evidence assembly (knowledge pack pipeline markers).
+  | 'pi_okf_profile_evidence_assembled'
+  | 'pi_okf_profile_export_requested'
+  | 'pi_okf_profile_export_completed'
+  // Coding-answer meta retry loop markers.
+  | 'pi_coding_meta_retry_attempted'
+  | 'pi_coding_meta_retry_succeeded'
+  | 'pi_coding_meta_retry_no_accept'
+  | 'pi_coding_skip_candidate_sanitizer'
+  // Doc-grounded validation/repair markers.
+  | 'pi_doc_grounded_validation_failed'
+  | 'pi_doc_grounded_regenerated'
+  | 'pi_doc_grounded_false_refusal_repair_attempted'
+  | 'pi_doc_grounded_false_refusal_kept_original'
+  | 'pi_doc_grounded_completeness_kept_original'
+  | 'pi_doc_grounded_kept_original';
 
 export interface PiTelemetryRecord {
   event: PiTelemetryEvent;

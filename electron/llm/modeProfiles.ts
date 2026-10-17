@@ -51,6 +51,14 @@ export interface ActiveModeInfo {
     /** A user-created mode (custom name/content on o 'general' template, ou a
      *  renamed template mode) — surfaced so prompt builders pode nome it. */
     isCustom: boolean;
+    /**
+     * Persisted explicit source contract (unbuilt system — undefined until a
+     * mode persists one; readers tolerate undefined, as they do today).
+     * Shaped minimally so `?.sourceAuthority` reads typecheck.
+     */
+    sourceContract?: { sourceAuthority?: unknown };
+    /** Doc-grounded custom mode active flag (same unbuilt-system status). */
+    documentGroundedCustomModeActive?: boolean;
 }
 
 export interface ModeContextProfile {

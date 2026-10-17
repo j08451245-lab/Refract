@@ -30,6 +30,16 @@ export interface StreamRouteOptions {
   answerType?: AnswerType;
   /** O plan's forbidden contexto layers — o authoritative exclusion llista */
   forbiddenContextLayers?: ContextLayer[];
+  /**
+   * V3-owned prompt: transport as-is, no legacy retrieval/mode injection.
+   * Consumed by streamChatWithOutcome callers; absent = legacy behavior.
+   */
+  v3Owned?: boolean;
+  /**
+   * Pinned mode id for this stream (mode switches supersede the stream).
+   * Null/absent = no pin.
+   */
+  pinnedModeId?: string | null;
 }
 
 /**

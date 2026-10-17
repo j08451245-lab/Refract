@@ -7,7 +7,11 @@
 
 export type FinalGenerationMode = string;
 
-export type SessionWriteDecision = unknown;
+// A write gate the session tracker may honor in the future. Today the
+// decider always resolves undefined (= no override; the message is
+// stored), and addAssistantMessage accepts-but-ignores it. Shaped (not
+// unknown) so readers like `decision.blockedFromSessionTracker` typecheck.
+export type SessionWriteDecision = { blockedFromSessionTracker?: boolean } | undefined;
 
 export function decideSessionWritePolicy(args: {
   finalGenerationMode?: FinalGenerationMode;

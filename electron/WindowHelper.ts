@@ -1290,4 +1290,201 @@ export class WindowHelper {
   public getReplicaWindow(): BrowserWindow | null {
     return this.replicaWindow;
   }
+
+  // ── Aux-window coordination (pill / toggle / popover-catcher) ──────────
+  // These BrowserWindows do not exist yet (no ?window=pill/toggle routes,
+  // no constructors) — the getters below return null so sender-validation
+  // call sites degrade to overlay-only instead of throwing. The stateful
+  // relays (ui-state broadcast, popover dismiss, resize envelope, group
+  // drag, toggle anchor, launcher preview) are implemented against the
+  // windows that DO exist.
+
+  /** Aux pill window — unbuilt. Returns null until ?window=pill exists. */
+  public getPillWindow(): BrowserWindow | null {
+    return null;
+  }
+
+  /** Aux toggle window — unbuilt. Returns null until ?window=toggle exists. */
+  public getToggleWindow(): BrowserWindow | null {
+    return null;
+  }
+
+  /** Fullscreen click-catcher window — unbuilt. Returns null. */
+  public getPopoverCatcherWindow(): BrowserWindow | null {
+    return null;
+  }
+
+  /** Resize the (unbuilt) pill window. No-op until ?window=pill exists. */
+  public setPillWindowSize(_width: number, _height: number): void {
+    void _width;
+    void _height;
+  }
+
+  private overlayUiState: Record<string, unknown> = {};
+  private overlayToggleAnchor: { panelRight: number; panelLeft?: number } | null = null;
+  private resizeEnvelopeStart: Electron.Rectangle | null = null;
+  private groupDragStart: Electron.Rectangle | null = null;
+  private groupDragging = false;
+
+  /**
+   * Overlay renderer → aux windows UI-state broadcast (expanded/shellWide/
+   * theme/opacity/hasContent). Stored and fanned out to the settings and
+   * model-selector dropdowns so they stay in sync with the overlay shell.
+   */
+  public setOverlayUiState(state: Record<string, unknown>): void {
+    this.overlayUiState = { ...(state ?? {}) };
+    try {
+      const settingsWin = this.appState.settingsWindowHelper?.getSettingsWindow?.();
+      if (settingsWin && !settingsWin.isDestroyed()) {
+        settingsWin.webContents.send('overlay-ui-state', this.overlayUiState);
+      }
+    } catch { /* sync is best-effort */ }
+    try {
+      const modelWin = this.appState.modelSelectorWindowHelper?.getWindow?.();
+      if (modelWin && !modelWin.isDestroyed()) {
+        modelWin.webContents.send('overlay-ui-state', this.overlayUiState);
+      }
+    } catch { /* sync is best-effort */ }
+  }
+
+  /**
+   * Aux windows → overlay renderer user-action relay (toggle-width /
+   * end-meeting / toggle-expand). Unreachable until pill/toggle windows
+   * exist; the relay itself is wired.
+   */
+  public forwardOverlayUiAction(action: { type?: string }): void {
+    try {
+      const overlayWin = this.getOverlayWindow();
+      if (overlayWin && !overlayWin.isDestroyed()) {
+        overlayWin.webContents.send('overlay-ui-action', action ?? {});
+      }
+    } catch { /* relay is best-effort */ }
+  }
+
+  /** Dismiss the overlay dropdowns (settings / model selector). */
+  public dismissOverlayPopovers(opts?: { settings?: boolean; model?: boolean }): void {
+    const closeSettings = opts?.settings !== false;
+    const closeModel = opts?.model !== false;
+    if (closeSettings) {
+      try { this.appState.settingsWindowHelper?.closeWindow?.(); } catch { /* best-effort */ }
+    }
+    if (closeModel) {
+      try { this.appState.modelSelectorWindowHelper?.hideWindow?.(); } catch { /* best-effort */ }
+    }
+  }
+
+  /**
+   * Smooth-resize envelope, 'begin' phase: snapshot the overlay bounds so
+   * 'end' can fit the result or restore the pre-drag size for a click.
+   * Returns the snapshotted size.
+   */
+  public beginOverlayResizeEnvelope(_drag?: {
+    direction: string; startWidth: number; startHeight: number;
+    minWidth: number; minHeight: number; panelLeft: number;
+  }): { width: number; height: number } | undefined {
+    void _drag;
+    try {
+      const win = this.getOverlayWindow();
+      if (!win || win.isDestroyed()) return undefined;
+      const b = win.getBounds();
+      this.resizeEnvelopeStart = { ...b };
+      return { width: b.width, height: b.height };
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Smooth-resize envelope, 'end' phase: fit the reported final size via
+   * the anchored resizer, or restore the pre-drag snapshot when no final
+   * size was reported (click). Resolves with the size actually applied.
+   */
+  public endOverlayResizeEnvelope(final?: { width: number; height: number }): { width: number; height: number } | undefined {
+    try {
+      if (final && Number.isFinite(final.width) && Number.isFinite(final.height) && final.width > 0 && final.height > 0) {
+        return this.setOverlayDimensionsAnchored(Math.round(final.width), Math.round(final.height));
+      }
+      const start = this.resizeEnvelopeStart;
+      this.resizeEnvelopeStart = null;
+      const win = this.getOverlayWindow();
+      if (start && win && !win.isDestroyed()) {
+        win.setBounds({ x: start.x, y: start.y, width: start.width, height: start.height });
+        return { width: start.width, height: start.height };
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    } finally {
+      this.resizeEnvelopeStart = null;
+    }
+  }
+
+  /**
+   * Record where the panel's live right edge sits so a future toggle aux
+   * window can ride the panel's top-right corner. Stored only — there is
+   * no toggle window to position yet.
+   */
+  public setOverlayToggleAnchor(panelRight: number, panelLeft?: number): void {
+    this.overlayToggleAnchor = { panelRight, panelLeft };
+  }
+
+  /** Group-drag 'start': snapshot the overlay bounds for TOTAL-offset moves. */
+  public beginOverlayGroupDrag(): void {
+    try {
+      const win = this.getOverlayWindow();
+      this.groupDragStart = win && !win.isDestroyed() ? { ...win.getBounds() } : null;
+      this.groupDragging = this.groupDragStart !== null;
+    } catch {
+      this.groupDragStart = null;
+      this.groupDragging = false;
+    }
+  }
+
+  /** Group-drag 'end': commit (position already moved) and release the snapshot. */
+  public endOverlayGroupDrag(): void {
+    this.groupDragStart = null;
+    this.groupDragging = false;
+  }
+
+  /**
+   * Group-drag 'move': dx/dy are the pointer's TOTAL offset since drag start
+   * (not per-frame deltas) — the overlay window is placed at start + offset.
+   */
+  public moveOverlayGroupTo(dx: number, dy: number): void {
+    try {
+      const start = this.groupDragStart;
+      const win = this.getOverlayWindow();
+      if (!start || !win || win.isDestroyed()) return;
+      const x = Number.isFinite(dx) ? Math.round(start.x + dx) : start.x;
+      const y = Number.isFinite(dy) ? Math.round(start.y + dy) : start.y;
+      win.setPosition(x, y);
+    } catch { /* drag is best-effort */ }
+  }
+
+  /**
+   * Whether the pill renderer must run its own drag. With no welded aux
+   * group, the OS drag region owns movement everywhere except macOS, where
+   * a welded child cannot use it. Unconsumed until ?window=pill exists.
+   */
+  public isOverlayGroupDragManaged(): boolean {
+    return process.platform === 'darwin';
+  }
+
+  /**
+   * Interface opacity "hold to preview" (Settings > General): strip the
+   * launcher window's native vibrancy/background so that while the renderer
+   * hides its DOM, what remains is the real desktop, not an opaque material.
+   * Restores on release. No-op when the launcher window is absent.
+   */
+  public setLauncherOpacityPreview(active: boolean): void {
+    try {
+      const win = this.getLauncherWindow() ?? this.getMainWindow();
+      if (!win || win.isDestroyed()) return;
+      if (active) {
+        win.setOpacity(0.35);
+      } else {
+        win.setOpacity(1.0);
+      }
+    } catch { /* preview is best-effort */ }
+  }
 }

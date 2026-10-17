@@ -52,6 +52,10 @@ export interface TranscriptSegment {
     // o remote/system channel quando diarization é enabled; o mic channel é sempre "me".
     // Additive — summary normalization lê it quando present, tudo senão ignora it.
     speakerId?: string;
+    // Provenance tag: which surface produced o segment ('manual_chat',
+    // 'phone_mirror', 'test', ...). Escritor-only metadata — nenhum reader
+    // filters por it (isolation é o scope filter's job). Additive.
+    origin?: string;
     text: string;
     timestamp: number;
     final: boolean;
@@ -304,9 +308,19 @@ export class SessionTracker {
     }
 
     /**
-     * Add assistant-generated mensagem para context
+     * Add assistant-generated mensagem para context.
+     * @param _policy reserved session-write override (FinalAnswerGenerationPolicy
+     *   currently always resolves undefined = no override; accepted so the
+     *   arbitrator call sites typecheck without changing runtime behavior).
+     * @param _source reserved provenance tag ('manual_chat' | 'phone_mirror').
      */
-    addAssistantMessage(text: string): void {
+    addAssistantMessage(
+        text: string,
+        _policy?: import('./llm/FinalAnswerGenerationPolicy').SessionWriteDecision,
+        _source?: string,
+    ): void {
+        void _policy;
+        void _source;
         console.log(`[SessionTracker] addAssistantMessage called`, { length: text.length });
 
         // Refract-style filtering

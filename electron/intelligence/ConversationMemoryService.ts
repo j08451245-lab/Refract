@@ -188,5 +188,10 @@ export class ConversationMemoryService {
     try { this.bySession.delete(sessionId); } catch { /* ignorar */ }
   }
 
+  /** Limpa TODAS as sessions (e.g. mode switch — prior-mode turns must not bleed). */
+  clearAllSessions(): void {
+    try { this.bySession.clear(); } catch { /* ignorar */ }
+  }
+
   get sessionCount(): number { return this.bySession.size; }
 }

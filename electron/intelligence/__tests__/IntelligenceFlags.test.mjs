@@ -21,6 +21,13 @@ const ENV_KEYS = [
   'REFRACT_GLOBAL_SEARCH_V2', 'REFRACT_IN_MEETING_SEARCH_V2', 'REFRACT_CONVERSATION_MEMORY_V2',
   'REFRACT_LECTURE_INTELLIGENCE_V2', 'REFRACT_DIAGRAM_INTELLIGENCE', 'REFRACT_HINDSIGHT_MEMORY',
   'REFRACT_HINDSIGHT_LIVE_RECALL', 'REFRACT_HINDSIGHT_POST_MEETING_RETAIN',
+  'REFRACT_CHAT_HISTORY_MULTI_TURN', 'REFRACT_CONTEXT_OS_IMPOSSIBLE_STATE_GATE_SHADOW',
+  'REFRACT_CONTEXT_OS_PROPERTY_VALIDATION',
+  'REFRACT_CONTEXT_OS_IMPOSSIBLE_STATE_GATE_ENFORCE_FORBIDDEN',
+  'REFRACT_CONTEXT_OS_EVIDENCE_PACK', 'REFRACT_CONTEXT_OS_MULTI_FAMILY_EVIDENCE',
+  'REFRACT_CONTEXT_OS_MEMORY_SAFETY', 'REFRACT_DOC_GROUNDED_STRICT_ISOLATION',
+  'REFRACT_OKF_HYBRID_RETRIEVAL', 'REFRACT_DOC_GROUNDED_FALSE_REFUSAL_REPAIR',
+  'REFRACT_OKF_PROFILE_MARKDOWN_EXPORT', 'REFRACT_OKF_PROFILE_KNOWLEDGE_UI',
 ];
 
 // O completo flag define — Meeting Notes V3 product flags intentionally ship default OEm
@@ -36,6 +43,13 @@ const ALL_FLAG_KEYS = [
   // list — drift fixed 2026-09-06):
   'repoIndexer', 'codeExplain', 'codeGenerate', 'codeReview', 'codeRefactor',
   'testGeneration', 'sandboxExec', 'opencodeIntegration', 'proactiveMode', 'personalMemory',
+  // Chat history + Context OS shadow gates (default OFF until wired):
+  'chatHistoryMultiTurn', 'contextOsImpossibleStateGateShadow',
+  'contextOsPropertyValidation', 'contextOsImpossibleStateGateEnforceForbidden',
+  'contextOsEvidencePackEnabled', 'contextOsMultiFamilyEvidenceEnabled',
+  'contextOsMemorySafetyEnabled', 'docGroundedStrictIsolation',
+  'okfHybridRetrieval', 'docGroundedFalseRefusalRepair',
+  'okfProfileMarkdownExport', 'okfProfileKnowledgeUi',
 ];
 
 const DEFAULT_ON_KEYS = new Set([

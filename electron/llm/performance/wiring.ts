@@ -14,12 +14,17 @@
 // the default raceStreamWithDeadline applies (:138). The plan-sketch 5000
 // would abort slow-but-healthy streams sooner than every other surface.
 
+export interface StreamDiagnosticsRecord {
+  terminationReason?: string;
+  [key: string]: unknown;
+}
+
 export function performanceHooks(args: {
   llmHelper?: unknown;
   hasImages?: boolean;
   inputTokens?: number;
   isUserCancelled?: () => boolean;
-  onDiagnostics?: (d: unknown) => void;
+  onDiagnostics?: (d: StreamDiagnosticsRecord) => void;
 }): { observe: () => void; interTokenStallMs: number } {
   void args;
   return { observe: () => undefined, interTokenStallMs: 8000 };

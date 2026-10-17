@@ -4893,8 +4893,26 @@ export class AppState {
 
 
 
-  public updateGoogleCredentials(keyPath: string): void {
+  /**
+   * Validate a Google service-account key file and point the backend at it.
+   * Returns a verdict (instead of void) so the caller can refuse to persist
+   * an unusable path — storing one produced the ENOENT crash loop, since the
+   * failure only surfaced later from inside the Speech SDK.
+   */
+  public updateGoogleCredentials(keyPath: string): { usable: boolean; reason: string } {
     console.log(`[AppState] Updating Google Credentials to: ${keyPath}`);
+    try {
+      if (!keyPath || !fs.existsSync(keyPath)) {
+        return { usable: false, reason: 'not_found' };
+      }
+      const parsed: unknown = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+      const rec = (typeof parsed === 'object' && parsed !== null ? parsed : {}) as Record<string, unknown>;
+      if (typeof rec.client_email !== 'string' || typeof rec.private_key !== 'string') {
+        return { usable: false, reason: 'not_service_account' };
+      }
+    } catch {
+      return { usable: false, reason: 'not_json' };
+    }
     // Conjunto global ambiente variável então novo instances escolher it para cima
     process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath;
 
@@ -4905,6 +4923,7 @@ export class AppState {
     if (this.googleSTT_User) {
       this.googleSTT_User.setCredentials(keyPath);
     }
+    return { usable: true, reason: 'ok' };
   }
 
   public setRecognitionLanguage(key: string): void {
@@ -5652,13 +5671,141 @@ export class AppState {
     return this._verboseLogging;
   }
 
-  public setVerboseLogging(enabled: boolean): void {
-    this._verboseLogging = enabled;
+  public setVerboseLogging(enabled: boolean): boolean {    this._verboseLogging = enabled;
     setVerboseLoggingFlag(enabled);
-    SettingsManager.getInstance().set('verboseLogging', enabled);
+    try {
+      SettingsManager.getInstance().set('verboseLogging', enabled);
+    } catch {
+      return false;
+    }
     console.log(`[AppState] verboseLogging set to ${enabled}`);
     // Notifica todos renderer windows então they pode start/stop forwarding their console saída
     this.broadcast('verbose-logging-changed', enabled);
+    return true;
+  }
+
+  // ── Ambient chat / Auto Answer surface toggles ──────────────────────────
+  // Persisted settings (default off = opt-in autonomous behavior). Getters
+  // read the store so a renderer restart picks up the persisted choice.
+
+  public getAmbientChatEnabled(): boolean {
+    try {
+      return SettingsManager.getInstance().get('ambientChatEnabled') === true;
+    } catch {
+      return false;
+    }
+  }
+
+  public setAmbientChatEnabled(enabled: boolean): void {
+    try {
+      SettingsManager.getInstance().set('ambientChatEnabled', enabled === true);
+    } catch { /* best-effort; getter reports persisted state */ }
+  }
+
+  public getAutoAnswerEnabled(): boolean {
+    try {
+      return SettingsManager.getInstance().get('autoAnswerEnabled') === true;
+    } catch {
+      return false;
+    }
+  }
+
+  public setAutoAnswerEnabled(enabled: boolean): boolean {
+    try {
+      return SettingsManager.getInstance().set('autoAnswerEnabled', enabled === true);
+    } catch {
+      return false;
+    }
+  }
+
+  // ── Stealth shortcut guard ──────────────────────────────────────────────
+  // Protective default (true): hotkeys stay guarded in stealth contexts
+  // until the user explicitly relaxes them. Persisted like the toggles above.
+  private stealthShortcutGuardEnabled: boolean = true;
+
+  public getStealthShortcutGuardEnabled(): boolean {
+    return this.stealthShortcutGuardEnabled;
+  }
+
+  public setStealthShortcutGuardEnabled(enabled: boolean): void {
+    this.stealthShortcutGuardEnabled = enabled === true;
+  }
+
+  // ── Auto Answer thresholds per mode template ────────────────────────────
+  // Bookkeeping for the mode-switch site: records which template's
+  // thresholds apply (null = registry default bar). No threshold registry
+  // exists yet, so this stores the selection for future readers.
+  private autoAnswerThresholdTemplate: string | null = null;
+
+  public applyAutoAnswerThresholds(templateType: string | null): void {
+    this.autoAnswerThresholdTemplate = templateType;
+  }
+
+  // ── Manual What-to-Answer retraction ────────────────────────────────────
+  // A manual answer commits whatever Auto Answer was offering — retract the
+  // pending offer card state (if any) so it never fires afterwards.
+  private autoAnswerOffer: unknown = null;
+
+  public onManualWhatToAnswer(): void {
+    this.autoAnswerOffer = null;
+  }
+
+  // ── One-shot recovery notices (Whisper / ONNX) ──────────────────────────
+  // take* returns the pending notice text (if any) and clears it, so each
+  // notice surfaces exactly once. Nothing posts notices yet.
+  private localWhisperRecoveryNotice: string | null = null;
+  private onnxRecoveryNotice: string | null = null;
+
+  public takeLocalWhisperRecoveryNotice(): string | null {
+    const notice = this.localWhisperRecoveryNotice;
+    this.localWhisperRecoveryNotice = null;
+    return notice;
+  }
+
+  public takeOnnxRecoveryNotice(_family?: string): string | null {
+    void _family;
+    const notice = this.onnxRecoveryNotice;
+    this.onnxRecoveryNotice = null;
+    return notice;
+  }
+
+  // ── Mode reference-index retry ──────────────────────────────────────────
+  // After a provider key save, retry the reference/embedding index pass via
+  // the existing deferred auto-reindex (idempotent no-op when nothing is
+  // incompatible). Best-effort: never throws into the save flow.
+  public scheduleModeReferenceIndexRetry(): void {
+    try {
+      this.getRAGManager?.()?.scheduleAutoReindex?.();
+    } catch { /* best-effort */ }
+  }
+
+  // ── Native OOM outbound-IPC diagnostics ──────────────────────────────────
+  // Bounded ring of recent main→renderer sends for OOM forensics. Written
+  // on the hot path (phone-mirror status fan-out), so it only counts and
+  // keeps the tail — no telemetry spam, no unbounded growth.
+  private nativeOomOutboundIpc: Array<{ ts: number; webContentsId: number; channel: string }> = [];
+
+  public recordNativeOomOutboundIpc(webContentsId: number, channel: string, _args: unknown): void {
+    void _args;
+    try {
+      this.nativeOomOutboundIpc.push({ ts: Date.now(), webContentsId, channel });
+      if (this.nativeOomOutboundIpc.length > 200) {
+        this.nativeOomOutboundIpc.splice(0, this.nativeOomOutboundIpc.length - 200);
+      }
+    } catch { /* diagnostics must never throw */ }
+  }
+
+  /**
+   * Re-assert undetectable stealth through the same self-verifying dock
+   * loop used at startup/toggle: hide the dock (retrying against OS ground
+   * truth) and re-assert content protection. No-op off macOS or when not
+   * undetectable — otherwise this path would be a dock-leak bypass.
+   */
+  public reassertUndetectableStealth(): void {
+    if (process.platform !== 'darwin') return;
+    if (!this.isUndetectable) return;
+    this.reassertAllContentProtection();
+    this._enforceDockState(true, this.windowHelper.getMainWindow(), 0, 6);
   }
 
   public setDisguise(mode: 'terminal' | 'settings' | 'activity' | 'none'): void {

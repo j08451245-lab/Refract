@@ -26,6 +26,16 @@ export interface HindsightConfig {
   defaultBank?: string;
   /** Default recall tempo limite se a chamar doesn't specify one. */
   timeoutMs?: number;
+  /**
+   * Deployment mode label ('local', ...). Resolved-config metadata only —
+   * the adapter never branches on it (callers default to 'local').
+   */
+  mode?: string;
+  /**
+   * True when this config was synthesized from defaults rather than read
+   * from persisted settings. Lets renderers label "(using local default)".
+   */
+  synthetic?: boolean;
 }
 
 // Structural tipo para apenas o bits de o cliente we uso (então we don't hard-import it).

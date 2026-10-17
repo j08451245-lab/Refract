@@ -158,15 +158,20 @@ export class IntelligenceManager extends EventEmitter {
         }
     }
 
-    addAssistantMessage(text: string): void {
-        this.session.addAssistantMessage(text);
+    addAssistantMessage(
+        text: string,
+        _policy?: import('./llm/FinalAnswerGenerationPolicy').SessionWriteDecision,
+        _source?: string,
+    ): void {
+        this.session.addAssistantMessage(text, _policy, _source);
     }
 
     getContext(lastSeconds: number = 120) {
         return this.session.getContext(lastSeconds);
     }
 
-    getLastAssistantMessage(): string | null {
+    getLastAssistantMessage(_surface?: string): string | null {
+        void _surface;
         return this.session.getLastAssistantMessage();
     }
 
@@ -185,6 +190,14 @@ export class IntelligenceManager extends EventEmitter {
 
     logUsage(type: string, question: string, answer: string): void {
         this.session.logUsage(type, question, answer);
+    }
+
+    /**
+     * Public usage-entry sink for external surfaces (e.g. IPC direct chat
+     * with synthetic replay-skipped turns). Delegates to the session store.
+     */
+    pushUsage(entry: unknown): void {
+        this.session.pushUsage(entry);
     }
 
     // ============================================
@@ -207,7 +220,7 @@ export class IntelligenceManager extends EventEmitter {
         return this.engine.runAssistMode();
     }
 
-    async runWhatShouldISay(question?: string, confidence?: number, imagePaths?: string[], options?: { skipCooldown?: boolean; screenContext?: ScreenContext; promptInstruction?: string; activeSkill?: { id: string; name: string; promptBlock: string }; domContext?: string }): Promise<string | null> {
+    async runWhatShouldISay(question?: string, confidence?: number, imagePaths?: string[], options?: { skipCooldown?: boolean; forceFresh?: boolean; screenContext?: ScreenContext; promptInstruction?: string; activeSkill?: { id: string; name: string; promptBlock: string }; domContext?: string }): Promise<string | null> {
         return this.engine.runWhatShouldISay(question, confidence, imagePaths, options);
     }
 
@@ -326,6 +339,15 @@ export class IntelligenceManager extends EventEmitter {
 
     getActiveDynamicActions(): import('./services/dynamic-actions/DynamicAction').DynamicAction[] {
         return this.engine.getActiveDynamicActions();
+    }
+
+    /**
+     * Supersede in-flight LIVE answers (mode switch): a WTA generation
+     * planned under the old mode must not finalize into a UI now showing
+     * the new one. Delegates to the engine's generation-id bump.
+     */
+    supersedeLiveAnswers(): void {
+        this.engine.supersedeLiveAnswers();
     }
 
     // ============================================

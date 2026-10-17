@@ -146,6 +146,14 @@ export interface IntelligenceTrace {
   }): IntelligenceTrace;
   noteContext(entry: ContextInclusionEntry): IntelligenceTrace;
   stage(stage: string, ms: number): IntelligenceTrace;
+  /**
+   * Named lifecycle moment ('created', 'planned', 'streaming',
+   * 'completed', ...). Recorded as a zero-ms stage entry so the answer's
+   * event order survives in the trace without polluting measured timings.
+   * `data` is accepted for forward-compat but never persisted (marker-only
+   * privacy rule — correlation markers carry the joinable ids instead).
+   */
+  lifecycle(event: string, data?: unknown): IntelligenceTrace;
   setProvider(info: { provider?: string; model?: string }): IntelligenceTrace;
   setLatency(info: { firstTokenMs?: number; firstUsefulMs?: number; totalMs?: number }): IntelligenceTrace;
   noteFallback(label: string): IntelligenceTrace;
@@ -160,6 +168,7 @@ const NOOP: IntelligenceTrace = {
   setRouting() { return NOOP; },
   noteContext() { return NOOP; },
   stage() { return NOOP; },
+  lifecycle() { return NOOP; },
   setProvider() { return NOOP; },
   setLatency() { return NOOP; },
   noteFallback() { return NOOP; },
@@ -249,6 +258,17 @@ class ActiveTrace implements IntelligenceTrace {
       const label = marker(stage, 40);
       if (!label) return this;
       this.rec.stages.push({ stage: label, ms: numOrUndef(ms) ?? 0 });
+    } catch { /* nunca throw */ }
+    return this;
+  }
+
+  lifecycle(event: string, data?: unknown): IntelligenceTrace {
+    void data;
+    try {
+      if (this.rec.stages.length >= MAX_STAGES) return this;
+      const label = marker(event, 40);
+      if (!label) return this;
+      this.rec.stages.push({ stage: `lifecycle:${label}`, ms: 0 });
     } catch { /* nunca throw */ }
     return this;
   }

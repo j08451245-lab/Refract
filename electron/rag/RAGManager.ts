@@ -53,6 +53,14 @@ import { LiveRAGIndexer } from './LiveRAGIndexer';
 import { buildRAGPrompt, NO_CONTEXT_FALLBACK, NO_GLOBAL_CONTEXT_FALLBACK } from './prompts';
 import type { ProviderDataScopePolicy } from '../llm/ProviderRouter';
 
+/**
+ * Coda marker a truncated RAG stream appends so recorders can tell partial
+ * answers from complete ones (checked via trimEnd().endsWith(CODA.trim())).
+ * No writer appends it yet (streaming path unbuilt) — until one does, the
+ * truncated detection built on it is inert by construction.
+ */
+export const RAG_STREAM_INCOMPLETE_CODA = '[truncated]';
+
 /** Configuração necessária para inicializar o RAGManager */
 export interface RAGManagerConfig {
     db: Database.Database;
@@ -389,6 +397,20 @@ export class RAGManager {
     /** Verifica se a indexação JIT produziu pelo menos um bloco consultável */
     hasLiveChunks(): boolean {
         return this.liveIndexer.hasIndexedChunks();
+    }
+
+    /**
+     * O id da meeting currently under live JIT indexing, ou null quando
+     * idle. Answers both "is the indexer running" and "for which meeting"
+     * so callers stop repeating the literal main.ts passes to
+     * startLiveIndexing (issue #552).
+     */
+    getLiveMeetingId(): string | null {
+        try {
+            return this.liveIndexer.getActiveMeetingId() ?? null;
+        } catch {
+            return null;
+        }
     }
 
     /**

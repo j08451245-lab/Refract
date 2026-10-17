@@ -138,6 +138,13 @@ export class PhoneMirrorService {
   // phone token pode nunca reach /dom. See o token-split rationale em CredentialsManager.
   private extToken = '';
   private exposeOnLan = false;
+  /** Whether the LAN-bind warning dialog was already shown + accepted. */
+  private lanBindDialogShown = false;
+
+  /** Record that the user saw and accepted the LAN-bind warning dialog. */
+  public markLanBindDialogShown(): void {
+    this.lanBindDialogShown = true;
+  }
   private history: PersistedMessage[] = [];
   // Single string em vez disso de token aarray O(1) append, O(1) replay (one WS frame).
   private livePartial: { streamId: string; content: string } | null = null;

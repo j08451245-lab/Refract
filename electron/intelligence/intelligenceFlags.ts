@@ -94,7 +94,22 @@ export type IntelligenceFlagKey =
   | 'opencodeIntegration'         // Delegate coding tasks to local opencode
   // ---- Refract Competitive Edge ----
   | 'proactiveMode'               // Zero-click struggle detection + auto-hint
-  | 'personalMemory';             // Persistent user preferences + decision history injection
+  | 'personalMemory'              // Persistent user preferences + decision history injection
+  // ---- Chat history + Context OS shadow gates ----
+  // Referenced by ipcHandlers surfaces; systems unbuilt — default OFF until
+  // wired (same rollout discipline as the Phase 3 set).
+  | 'chatHistoryMultiTurn'                  // multi-turn chat history scope
+  | 'contextOsImpossibleStateGateShadow'    // impossible-state gate, shadow mode
+  | 'contextOsPropertyValidation'           // property validation gate
+  | 'contextOsImpossibleStateGateEnforceForbidden' // enforce-forbidden gate
+  | 'contextOsEvidencePackEnabled'          // evidence-pack assembly
+  | 'contextOsMultiFamilyEvidenceEnabled'   // multi-family evidence
+  | 'contextOsMemorySafetyEnabled'          // memory-safety gate
+  | 'docGroundedStrictIsolation'            // doc-grounded strict isolation
+  | 'okfHybridRetrieval'                    // OKF hybrid retrieval
+  | 'docGroundedFalseRefusalRepair'         // doc-grounded false-refusal repair
+  | 'okfProfileMarkdownExport'              // OKF profile markdown export gate
+  | 'okfProfileKnowledgeUi';                // OKF profile knowledge UI gate
 
 interface FlagSpec {
   /** env var nome (REFRACT_* convention). */
@@ -173,6 +188,20 @@ const FLAGS: Record<IntelligenceFlagKey, FlagSpec> = {
   // ---- Refract Competitive Edge ----
   proactiveMode: { env: 'REFRACT_PROACTIVE_MODE', setting: 'proactiveModeEnabled', default: true },
   personalMemory: { env: 'REFRACT_PERSONAL_MEMORY', setting: 'personalMemoryEnabled', default: true },
+  // Chat history + Context OS shadow gates (unbuilt systems — default OFF).
+  chatHistoryMultiTurn: { env: 'REFRACT_CHAT_HISTORY_MULTI_TURN', setting: 'chatHistoryMultiTurnEnabled', default: false },
+  contextOsImpossibleStateGateShadow: { env: 'REFRACT_CONTEXT_OS_IMPOSSIBLE_STATE_GATE_SHADOW', setting: 'contextOsImpossibleStateGateShadowEnabled', default: false },
+  contextOsPropertyValidation: { env: 'REFRACT_CONTEXT_OS_PROPERTY_VALIDATION', setting: 'contextOsPropertyValidationEnabled', default: false },
+  contextOsImpossibleStateGateEnforceForbidden: { env: 'REFRACT_CONTEXT_OS_IMPOSSIBLE_STATE_GATE_ENFORCE_FORBIDDEN', setting: 'contextOsImpossibleStateGateEnforceForbiddenEnabled', default: false },
+  contextOsEvidencePackEnabled: { env: 'REFRACT_CONTEXT_OS_EVIDENCE_PACK', setting: 'contextOsEvidencePackEnabled', default: false },
+  contextOsMultiFamilyEvidenceEnabled: { env: 'REFRACT_CONTEXT_OS_MULTI_FAMILY_EVIDENCE', setting: 'contextOsMultiFamilyEvidenceEnabled', default: false },
+  contextOsMemorySafetyEnabled: { env: 'REFRACT_CONTEXT_OS_MEMORY_SAFETY', setting: 'contextOsMemorySafetyEnabled', default: false },
+  // Doc-grounded + OKF hybrid gates (referenced by ipcHandlers surfaces).
+  docGroundedStrictIsolation: { env: 'REFRACT_DOC_GROUNDED_STRICT_ISOLATION', setting: 'docGroundedStrictIsolationEnabled', default: false },
+  okfHybridRetrieval: { env: 'REFRACT_OKF_HYBRID_RETRIEVAL', setting: 'okfHybridRetrievalEnabled', default: false },
+  docGroundedFalseRefusalRepair: { env: 'REFRACT_DOC_GROUNDED_FALSE_REFUSAL_REPAIR', setting: 'docGroundedFalseRefusalRepairEnabled', default: false },
+  okfProfileMarkdownExport: { env: 'REFRACT_OKF_PROFILE_MARKDOWN_EXPORT', setting: 'okfProfileMarkdownExportEnabled', default: false },
+  okfProfileKnowledgeUi: { env: 'REFRACT_OKF_PROFILE_KNOWLEDGE_UI', setting: 'okfProfileKnowledgeUiEnabled', default: false },
 };
 
 const ON_VALUES = new Set(['1', 'true', 'on', 'enabled', 'yes']);
@@ -238,6 +267,15 @@ export const isDurableMemoryWindowEnabled = (): boolean =>
  * ainda gates its próprio behavior; isso é apenas o master trocar a rollout pode uuso
  */
 export const isIntelligenceOsEnabled = (): boolean => isIntelligenceFlagEnabled('intelligenceOsEnabled');
+
+/**
+ * OKF profile-pack UI/export gates (knowledge surfaces). Default OFF until
+ * the pack pipeline is wired; the handlers fail closed with flag_off.
+ */
+export const isOkfProfileMarkdownExportEnabled = (): boolean =>
+  isIntelligenceFlagEnabled('okfProfileMarkdownExport');
+export const isOkfProfileKnowledgeUiEnabled = (): boolean =>
+  isIntelligenceFlagEnabled('okfProfileKnowledgeUi');
 
 /**
  * A snapshot de todo flag's resolved estado — handy para o IntelligenceTrace and

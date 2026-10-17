@@ -82,9 +82,18 @@ test('STT key IPC handlers warn the user when keys cannot be persisted', () => {
   for (const id of handlers) {
     const start = source.indexOf(`'${id}'`);
     assert.ok(start >= 0, `${id} handler should exist`);
-    const block = source.slice(start, start + 1000);
-    assert.match(block, /sttKeyPersistenceWarning\(apiKey\) \?\? \{ success: true \}/,
-      `${id} should return the persistence-aware result`);
+    const block = source.slice(start, start + 1400);
+    // Ordem importa: o guard precisa rodar ANTES do broadcast 'credentials-changed'.
+    // Se a chave não persistiu, o renderer não deve recarregar estado como se
+    // estivesse salva (false-Saved → some no restart).
+    // Forma canônica: `const warning = sttKeyPersistenceWarning(apiKey, persisted); if (warning) return warning;`
+    const warnIdx = block.indexOf('sttKeyPersistenceWarning(apiKey, persisted)');
+    assert.ok(warnIdx >= 0, `${id} should call sttKeyPersistenceWarning(apiKey, persisted)`);
+    const afterWarn = block.slice(warnIdx);
+    assert.match(afterWarn, /if \(warning\) return warning;/,
+      `${id} should return early when the guard reports a persistence failure`);
+    assert.match(afterWarn, /credentials-changed/,
+      `${id} should still broadcast credentials-changed on the success path`);
   }
 });
 

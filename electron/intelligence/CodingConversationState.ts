@@ -198,5 +198,10 @@ export class CodingConversationState {
     try { this.bySession.delete(sessionId); } catch { /* ignorar */ }
   }
 
+  /** Limpa TODAS as sessions (e.g. mode switch — stale prior-mode problems must not survive it). */
+  clearAllSessions(): void {
+    try { this.bySession.clear(); } catch { /* ignorar */ }
+  }
+
   get sessionCount(): number { return this.bySession.size; }
 }

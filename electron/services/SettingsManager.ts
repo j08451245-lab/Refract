@@ -131,6 +131,21 @@ export interface AppSettings {
     sttMaxSampleRate?: number;
     sttMaxChannels?: number;
     sttAllowDualStream?: boolean;
+    // Direct-assist surface kill-switch + persisted toggle (written by the
+    // direct-assist IPC; read back via untyped accessor). Default undefined = on.
+    directAssistEnabled?: boolean;
+    // Explicit user opt-out of Hindsight (distinct from unconfigured).
+    // Default undefined = not opted out.
+    hindsightExplicitlyDisabled?: boolean;
+    // Retrieval provider blobs (embedding/reranker configs). Unvalidated
+    // opaque payloads — readers cast to any and probe `.provider`.
+    reranker?: unknown;
+    embedding?: unknown;
+    // Ambient chat + Auto Answer surface toggles (persisted; default off).
+    ambientChatEnabled?: boolean;
+    autoAnswerEnabled?: boolean;
+    // Context-debug verbosity (diagnostics surface). Default undefined = 'off'.
+    contextDebugLevel?: 'off' | 'standard' | 'verbose';
 }
 
 export const VALID_SCREEN_UNDERSTANDING_MODES = ['vision_first', 'vision_only', 'private_vision'] as const;
@@ -189,9 +204,11 @@ export class SettingsManager {
         return this.settings[key];
     }
 
-    public set<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
+    public set<K extends keyof AppSettings>(key: K, value: AppSettings[K]): boolean {
         this.settings[key] = value;
-        this.saveSettings();
+        // R-24: report whether the write reached disk so callers never claim
+        // a setting stuck when a degraded store refused it.
+        return this.saveSettings();
     }
 
     // Resolved screen-understanding modo com padrão e runtime validation.
@@ -204,12 +221,44 @@ export class SettingsManager {
         return 'vision_first';
     }
 
-    public setScreenUnderstandingMode(mode: ScreenUnderstandingMode): void {
+    public getDirectAssistEnabled(): boolean {
+        return this.settings.directAssistEnabled !== false;
+    }
+
+    /**
+     * Operator kill switch for Direct Assist (env-only, never persisted).
+     * Set REFRACT_DIRECT_ASSIST_KILL=1 to force-disable regardless of the
+     * user toggle — the DIRECT_ASSIST_KILLED error path.
+     */
+    public isDirectAssistKilledByOperator(): boolean {
+        try {
+            const v = process.env.REFRACT_DIRECT_ASSIST_KILL;
+            return v === '1' || v === 'true';
+        } catch {
+            return false;
+        }
+    }
+
+    public getContextDebugLevel(): 'off' | 'standard' | 'verbose' {
+        return this.settings.contextDebugLevel ?? 'off';
+    }
+
+    /**
+     * Persist the context-debug level. R-24: returns whether the write
+     * reached disk (callers must not report success on a refused write).
+     */
+    public setContextDebugLevel(level: 'off' | 'standard' | 'verbose'): boolean {
+        this.settings.contextDebugLevel = level;
+        return this.saveSettings();
+    }
+
+    public setScreenUnderstandingMode(mode: ScreenUnderstandingMode): boolean {
         if (!(VALID_SCREEN_UNDERSTANDING_MODES as readonly string[]).includes(mode)) {
             throw new Error(`[SettingsManager] Invalid screenUnderstandingMode: ${mode}`);
         }
         this.settings.screenUnderstandingMode = mode;
-        this.saveSettings();
+        // R-24: report persistence like set() so callers never claim a stuck mode.
+        return this.saveSettings();
     }
 
     public getTechnicalInterviewVisionFirst(): boolean {
@@ -347,13 +396,15 @@ export class SettingsManager {
         }
     }
 
-    private saveSettings(): void {
+    private saveSettings(): boolean {
         try {
             const tmpPath = this.settingsPath + '.tmp';
             fs.writeFileSync(tmpPath, JSON.stringify(this.settings, null, 2));
             fs.renameSync(tmpPath, this.settingsPath);
+            return true;
         } catch (e) {
             console.error('[SettingsManager] Failed to save settings:', e);
+            return false;
         }
     }
 }

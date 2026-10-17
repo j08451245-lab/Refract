@@ -14,6 +14,12 @@ export interface SkillSummary {
 export interface SkillDetails extends SkillSummary {
   instructions: string;
   filePath?: string;
+  /**
+   * Opt-out toggle (no enforcement wired yet — undefined means available,
+   * matching today's runtime where the property doesn't exist). The
+   * `skills:set-enabled` IPC was removed; see the note at the call sites.
+   */
+  enabled?: boolean;
 }
 
 const MAX_SKILL_FILE_BYTES = 100 * 1024;
@@ -609,6 +615,32 @@ ${skill.instructions}
     const error = await shell.openPath(folder);
     if (error) return { success: false, path: folder, error };
     return { success: true, path: folder };
+  }
+
+  /**
+   * Hard-delete a user-installed skill (its whole directory). Built-ins are
+   * blocked — ensureBuiltinSkills() would silently re-seed them on the next
+   * load, so deleting them would lie about persistence.
+   */
+  public deleteSkill(id: string): { success: boolean; error?: string } {
+    const skill = this.getSkill(id);
+    if (!skill) return { success: false, error: 'not_found' };
+    if (skill.source === 'builtin' || BUILTIN_SKILL_IDS.has(skill.id)) {
+      return { success: false, error: 'builtin_protected' };
+    }
+    if (!skill.filePath) return { success: false, error: 'not_found' };
+    try {
+      const dir = path.dirname(skill.filePath);
+      const resolvedDir = path.resolve(dir);
+      const resolvedRoot = path.resolve(this.skillsDir);
+      if (resolvedDir === resolvedRoot || !resolvedDir.startsWith(resolvedRoot + path.sep)) {
+        return { success: false, error: 'invalid_skill_path' };
+      }
+      fs.rmSync(resolvedDir, { recursive: true, force: true });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'failed to delete skill' };
+    }
   }
 
   private ensureSkillsDir(): void {

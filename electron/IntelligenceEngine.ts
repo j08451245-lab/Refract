@@ -780,7 +780,7 @@ export class IntelligenceEngine extends EventEmitter {
      * Manual acionar - uses clean transcript pipeline para question inference
      * NEVER returns nulo - sempre provides a usable response
      */
-    async runWhatShouldISay(question?: string, confidence: number = 0.8, imagePaths?: string[], options?: { speculative?: boolean; skipCooldown?: boolean; screenContext?: ScreenContext; promptInstruction?: string; activeSkill?: { id: string; name: string; promptBlock: string }; domContext?: string }): Promise<string | null> {
+    async runWhatShouldISay(question?: string, confidence: number = 0.8, imagePaths?: string[], options?: { speculative?: boolean; skipCooldown?: boolean; forceFresh?: boolean; screenContext?: ScreenContext; promptInstruction?: string; activeSkill?: { id: string; name: string; promptBlock: string }; domContext?: string }): Promise<string | null> {
         const now = Date.now();
         // Intelligence OS observe-only rastrear (Fase 1). Zero-cost NO-OP a menos que
         // intelligence_trace_enabled é oem Committed at o primário final-answer emitir
@@ -790,6 +790,9 @@ export class IntelligenceEngine extends EventEmitter {
         const wtaTrace = beginTrace(typeof question === 'string' ? question : '');
         const isSpeculative = options?.speculative === true;
         const skipCooldown = options?.skipCooldown === true;
+        // forceFresh (explicit manual press): bypass the throttle like an
+        // explicit skipCooldown — a manual press is always fresh by definition.
+        const bypassCooldown = skipCooldown || options?.forceFresh === true;
 
         // Cooldown bypass: explicit images (user intent), speculative pre-fetch, ou
         // explicit pular (manual hotkey/button press, tests). O cooldown apenas
@@ -801,7 +804,7 @@ export class IntelligenceEngine extends EventEmitter {
         if (shouldThrottleTrigger({
             hasImages,
             isSpeculative,
-            skipCooldown,
+            skipCooldown: bypassCooldown,
             now,
             lastTriggerTime: this.lastTriggerTime,
             triggerCooldown: this.triggerCooldown,
@@ -2506,6 +2509,16 @@ export class IntelligenceEngine extends EventEmitter {
 
     getActiveMode(): IntelligenceMode {
         return this.activeMode;
+    }
+
+    /**
+     * Supersede in-flight LIVE answers without resetting anything else.
+     * Bumps the generation id so every pending generation observes itself
+     * as superseded and never finalizes into a UI showing a new mode.
+     * Lighter than reset() (which also idles the mode and aborts tokens).
+     */
+    supersedeLiveAnswers(): void {
+        this.currentGenerationId++;
     }
 
     /**

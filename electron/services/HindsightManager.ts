@@ -232,6 +232,8 @@ export class HindsightManager {
   /** Cached health result + quando it era taken. */
   private lastHealthy = false;
   private lastCheckedAt = 0;
+  /** Timestamp of the last 401/403 seen by healthCheck (0 = none). Drives isAuthFailed(). */
+  private lastAuthFailedAt = 0;
   /** True apenas quando WE spawned o server (so we kill it on quit). A user-run ou Cloud
    *  server is nunca app-managed e is esquerda running. */
   private isAppManaged = false;
@@ -321,8 +323,7 @@ export class HindsightManager {
   }
 
   /** Obtém <baseUrl>/health com timeout de 1s. Retorna falso em qualquer erro/timeout. */
-  async healthCheck(): Promise<boolean> {
-    const cfg = this.getHindsightConfig();
+  async healthCheck(): Promise<boolean> {    const cfg = this.getHindsightConfig();
     if (!cfg) return false;
     try {
       const controller = new AbortController();
@@ -335,6 +336,11 @@ export class HindsightManager {
       });
       clearTimeout(timer);
       const ok = res.ok;
+      if (!ok && (res.status === 401 || res.status === 403)) {
+        this.lastAuthFailedAt = Date.now();
+      } else if (ok) {
+        this.lastAuthFailedAt = 0;
+      }
       this.lastHealthy = ok;
       this.lastCheckedAt = Date.now();
       return ok;
@@ -343,6 +349,24 @@ export class HindsightManager {
       this.lastCheckedAt = Date.now();
       return false;
     }
+  }
+
+  /**
+   * True when the last health probe was rejected with 401/403 (Cloud key
+   * rejected). Cleared by the next successful probe. Lets the overlay
+   * banner render Cloud-key-specific copy instead of generic "can't connect".
+   */
+  isAuthFailed(): boolean {
+    return this.lastAuthFailedAt !== 0;
+  }
+
+  /**
+   * Server log path for the open-hindsight-log surface. The app-managed
+   * server is spawned with stdio ignored by design, so there is no log
+   * file — returns null and the caller reports `no_log_path`.
+   */
+  getServerLogPath(): string | null {
+    return null;
   }
 
   /**

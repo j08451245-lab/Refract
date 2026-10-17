@@ -149,6 +149,7 @@ function resolveManualChatBasePrompt(
 }
 import { isAssistantIdentityQuestion, profileFactsReady } from './llm/manualProfileIntelligence';
 import { buildManualProfileEvidenceRoute } from './llm/profileAnswerBackend';
+import type { ManualProfileEvidenceRoute } from './llm/profileAnswerBackend';
 import { DOC_GROUNDED_TOKEN_BUDGET } from './services/ModeContextRetriever';
 import { detectIncompleteNumericAnswer, completenessRegenFabricates, isDocGroundedAnswerType, isAssistantRefusal, SYSTEM_REFUSAL_RE } from './llm/documentGroundedPrompt';
 // ONE list of provider data scopes (see ProviderRouter). The handler below used
@@ -342,7 +343,7 @@ export function initializeIpcHandlers(appState: AppState): void {
       const cm = CredentialsManager.getInstance();
       const defaultModel = cm.getDefaultModel();
       const antigravityCatalog = defaultModel.startsWith('antigravity:') && AntigravityService.getInstance().getStatus().signedIn
-        ? await AntigravityService.getInstance().getModels().catch(() => null)
+        ? await AntigravityService.getInstance().getModels().catch((): Array<{ id: string }> | null => null)
         : null;
       const curlProviders = cm.getCurlProviders() || [];
       const legacyProviders = cm.getCustomProviders() || [];
@@ -451,7 +452,7 @@ export function initializeIpcHandlers(appState: AppState): void {
         if (modelId === 'refract') return has(cm.getRefractApiKey());
         if (modelId.startsWith('codex-cli')) return codexConfig.enabled === true && codexSignedIn;
         if (modelId.startsWith('antigravity:')) return AntigravityService.getInstance().getStatus().signedIn
-          && (antigravityCatalog === null || antigravityCatalog.some(({ id }) => modelId === `antigravity:${id}`));
+          && (antigravityCatalog === null || antigravityCatalog.some(({ id }: { id: string }) => modelId === `antigravity:${id}`));
         if (modelId.startsWith('litellm/')) return has(cm.getLitellmBaseURL());
         if (modelId.startsWith('nvidia_nim/')) return has(cm.getNvidiaNimApiKey());
         // Above the groq/openai lines for the reason providerFamily() gives.
@@ -536,8 +537,8 @@ export function initializeIpcHandlers(appState: AppState): void {
 
       const antigravityFallback = AntigravityService.getInstance().getStatus().signedIn
         && !cm.getDisabledProviders().includes('antigravity')
-        ? (antigravityCatalog ?? await AntigravityService.getInstance().getModels().catch(() => []))
-          .map(({ id }) => `antigravity:${id}`).find(modelAvailable)
+        ? (antigravityCatalog ?? await AntigravityService.getInstance().getModels().catch((): Array<{ id: string }> => []))
+          .map(({ id }: { id: string }) => `antigravity:${id}`).find(modelAvailable)
         : undefined;
       const next = defaultModel.startsWith('antigravity:') && antigravityFallback ? antigravityFallback
         : modelAvailable('refract') ? 'refract'
@@ -3304,7 +3305,7 @@ export function initializeIpcHandlers(appState: AppState): void {
           validationOk: true,
           sourceContractHonored: true,
         });
-        let selectedProfileEvidence: import('./llm/manualProfileIntelligence').ManualProfileRouteResult | null = null;
+            let selectedProfileEvidence: ManualProfileEvidenceRoute | null = null;
         let profileJitPrompt: ReturnType<typeof buildProfileJitPrompt> | null = null;
 
         // SOURCE-HONEST CLARIFICATION: doc/transcript mode + an EXPLICIT profile
@@ -3428,10 +3429,10 @@ export function initializeIpcHandlers(appState: AppState): void {
                 // `Boolean(jd) && layers.includes('jd')` proxy.
                 _attr.structured_jd_used = jdEvidenceCount > 0;
               } catch { /* diagnostics only */ }
-              chatTrace.mark('profile_evidence_selected' as any, {
-                answerType: evidenceRoute.answerType,
-                evidenceItems: evidenceRoute.items.length,
-                promptChars: profileJitPrompt.promptChars,
+                chatTrace.mark('profile_evidence_selected' as any, {
+                  answerType: evidenceRoute.answerType,
+                  evidenceItems: evidenceRoute.items.length,
+                  promptChars: (profileJitPrompt?.systemPrompt?.length ?? 0) + (profileJitPrompt?.userPrompt?.length ?? 0),
                 finalGenerationMode,
               });
               iTrace.noteContext({ source: 'profile_tree', trustLevel: 'high', requested: true, retrieved: true, included: true, reason: 'manual_jit_evidence_selection' });
@@ -4365,7 +4366,7 @@ export function initializeIpcHandlers(appState: AppState): void {
             firstUsefulDeadlineMs: applyAdaptiveTtft(
               (imagePaths?.length ?? 0) > 0
                 ? totalHardTimeoutMs({ isLocal: usingLocalLlm, isVisionTurn: true, viaServerCascade })
-                : firstUsefulDeadlineMs(answerPlan.answerType, usingLocalLlm, viaServerCascade, usingUserEndpoint, observedUserEndpointLatency),
+                : firstUsefulDeadlineMs(answerPlan.answerType, usingLocalLlm),
               { llmHelper: llmHelper as any, hasImages: (imagePaths?.length ?? 0) > 0, inputTokens: _estimatePerfTokens(`${message ?? ''}${context ?? ''}`) },
             ),
             isUsefulYet: () => manualFirstUseful,
@@ -6077,7 +6078,7 @@ export function initializeIpcHandlers(appState: AppState): void {
             // (the doc-grounded validator gate) is kept as a separate guard.
             if (fullResponse.trim().length > 0
                 && !blockedFromSessionTracker
-                && !sessionWriteDecision.blockedFromSessionTracker) {
+                && !sessionWriteDecision?.blockedFromSessionTracker) {
               intelligenceManager.addAssistantMessage(fullResponse, sessionWriteDecision, 'manual_chat');
               // Log Usage for streaming chat
               intelligenceManager.logUsage('chat', message, fullResponse);
@@ -7082,7 +7083,9 @@ export function initializeIpcHandlers(appState: AppState): void {
       imagePaths = [];
       for (const rendererPath of candidate.imagePaths as string[]) {
         const resolved = resolveDirectAssistImagePath(rendererPath, userDataDir, canonicalUserDataDir);
-        if (!resolved.ok) {
+        // Explicit === false (not falsy): without strictNullChecks the falsy
+        // check does not narrow the ok:true | ok:false union.
+        if (resolved.ok === false) {
           return { requestId, error: directAssistError('INVALID_ATTACHMENT', resolved.rejection) };
         }
         imagePaths.push(resolved.canonicalPath);
@@ -8281,8 +8284,8 @@ export function initializeIpcHandlers(appState: AppState): void {
       const llmHelper = appState.processingHelper.getLLMHelper();
       return {
         provider: llmHelper.getCurrentProvider(),
-        model: llmHelper.getCurrentModelId(),
-        modelId: llmHelper.getCurrentModelId(),
+        model: llmHelper.getCurrentModel(),
+        modelId: llmHelper.getCurrentModel(),
         displayName: llmHelper.getCurrentModelDisplayName(),
         isOllama: llmHelper.isUsingOllama(),
       };
@@ -12235,10 +12238,14 @@ export function initializeIpcHandlers(appState: AppState): void {
     try {
       const { CredentialsManager } = require('./services/CredentialsManager');
       const persisted = CredentialsManager.getInstance().setGroqSttApiKey(apiKey);
+      // Broadcast APÓS o guard: se a chave não persistiu, o renderer não deve
+      // recarregar estado como se estivesse salva (false-Saved → some no restart).
+      const warning = sttKeyPersistenceWarning(apiKey, persisted);
+      if (warning) return warning;
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed()) win.webContents.send('credentials-changed');
       });
-      return sttKeyPersistenceWarning(apiKey, persisted) ?? { success: true };
+      return { success: true };
     } catch (error: any) {
       console.error('Error saving Groq STT API key:', error);
       return { success: false, error: error.message };
@@ -12249,10 +12256,12 @@ export function initializeIpcHandlers(appState: AppState): void {
     try {
       const { CredentialsManager } = require('./services/CredentialsManager');
       const persisted = CredentialsManager.getInstance().setOpenAiSttApiKey(apiKey);
+      const warning = sttKeyPersistenceWarning(apiKey, persisted);
+      if (warning) return warning;
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed()) win.webContents.send('credentials-changed');
       });
-      return sttKeyPersistenceWarning(apiKey, persisted) ?? { success: true };
+      return { success: true };
     } catch (error: any) {
       console.error('Error saving OpenAI STT API key:', error);
       return { success: false, error: error.message };
@@ -12290,10 +12299,12 @@ export function initializeIpcHandlers(appState: AppState): void {
       const { CredentialsManager } = require('./services/CredentialsManager');
       const persisted = CredentialsManager.getInstance().setDeepgramApiKey(apiKey);
       await appState.reconfigureSttProvider();
+      const warning = sttKeyPersistenceWarning(apiKey, persisted);
+      if (warning) return warning;
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed()) win.webContents.send('credentials-changed');
       });
-      return sttKeyPersistenceWarning(apiKey, persisted) ?? { success: true };
+      return { success: true };
     } catch (error: any) {
       console.error('Error saving Deepgram API key:', error);
       return { success: false, error: error.message };
@@ -12320,10 +12331,12 @@ export function initializeIpcHandlers(appState: AppState): void {
       const { CredentialsManager } = require('./services/CredentialsManager');
       const persisted = CredentialsManager.getInstance().setElevenLabsApiKey(apiKey);
       await appState.reconfigureSttProvider();
+      const warning = sttKeyPersistenceWarning(apiKey, persisted);
+      if (warning) return warning;
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed()) win.webContents.send('credentials-changed');
       });
-      return sttKeyPersistenceWarning(apiKey, persisted) ?? { success: true };
+      return { success: true };
     } catch (error: any) {
       console.error('Error saving ElevenLabs API key:', error);
       return { success: false, error: error.message };
@@ -12335,10 +12348,12 @@ export function initializeIpcHandlers(appState: AppState): void {
       const { CredentialsManager } = require('./services/CredentialsManager');
       const persisted = CredentialsManager.getInstance().setAzureApiKey(apiKey);
       await appState.reconfigureSttProvider();
+      const warning = sttKeyPersistenceWarning(apiKey, persisted);
+      if (warning) return warning;
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed()) win.webContents.send('credentials-changed');
       });
-      return sttKeyPersistenceWarning(apiKey, persisted) ?? { success: true };
+      return { success: true };
     } catch (error: any) {
       console.error('Error saving Azure API key:', error);
       return { success: false, error: error.message };
@@ -12374,10 +12389,12 @@ export function initializeIpcHandlers(appState: AppState): void {
       const { CredentialsManager } = require('./services/CredentialsManager');
       const persisted = CredentialsManager.getInstance().setIbmWatsonApiKey(apiKey);
       await appState.reconfigureSttProvider();
+      const warning = sttKeyPersistenceWarning(apiKey, persisted);
+      if (warning) return warning;
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed()) win.webContents.send('credentials-changed');
       });
-      return sttKeyPersistenceWarning(apiKey, persisted) ?? { success: true };
+      return { success: true };
     } catch (error: any) {
       console.error('Error saving IBM Watson API key:', error);
       return { success: false, error: error.message };
@@ -12392,10 +12409,12 @@ export function initializeIpcHandlers(appState: AppState): void {
       // is picked up immediately (without this, the pipeline stays on the GoogleSTT
       // fallback that was chosen when reconfigure ran before the key was entered).
       await appState.reconfigureSttProvider();
+      const warning = sttKeyPersistenceWarning(apiKey, persisted);
+      if (warning) return warning;
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed()) win.webContents.send('credentials-changed');
       });
-      return sttKeyPersistenceWarning(apiKey, persisted) ?? { success: true };
+      return { success: true };
     } catch (error: any) {
       console.error('Error saving Soniox API key:', error);
       return { success: false, error: error.message };
@@ -14207,13 +14226,13 @@ export function initializeIpcHandlers(appState: AppState): void {
               (imagePath) => typeof imagePath !== 'string' || imagePath.trim().length === 0,
             )
           ) {
-            console.warn('[IPC] generate-what-to-say: malformed image path payload rejected');
-            return {
-              answer: null,
-              question: question || 'unknown',
-              screenContextStatus,
-              error: 'Invalid image path payload',
-            };
+              console.warn('[IPC] generate-what-to-say: malformed image path payload rejected');
+              return {
+                answer: null as string | null,
+                question: question || 'unknown',
+                screenContextStatus,
+                error: 'Invalid image path payload',
+              };
           }
 
           const { app } = require('electron');
@@ -14402,11 +14421,11 @@ export function initializeIpcHandlers(appState: AppState): void {
         // a dispute report must never imply service was delivered when it was
         // not (§6). The two early returns above use the same shape and are
         // classified the same way, which is the point of the shared wrapper.
-        return {
-          answer: null,
-          question: question || 'unknown',
-          error: error?.message || 'unknown_error',
-        };
+          return {
+            answer: null as string | null,
+            question: question || 'unknown',
+            error: error?.message || 'unknown_error',
+          };
       }
       });
     },
@@ -14495,7 +14514,7 @@ export function initializeIpcHandlers(appState: AppState): void {
             console.warn(
               `[IPC] generate-code-hint: invalid image path rejected: ${validation.reason}`,
             );
-            return { error: `Invalid image path: ${validation.reason}`, hint: null };
+              return { error: `Invalid image path: ${validation.reason}`, hint: null as string | null };
           }
         }
       }
@@ -14554,7 +14573,7 @@ export function initializeIpcHandlers(appState: AppState): void {
             console.warn(
               `[IPC] generate-brainstorm: invalid image path rejected: ${validation.reason}`,
             );
-            return { error: `Invalid image path: ${validation.reason}`, script: null };
+            return { error: `Invalid image path: ${validation.reason}`, script: null as string | null };
           }
         }
       }
@@ -18266,7 +18285,7 @@ export function initializeIpcHandlers(appState: AppState): void {
           observe: phonePerf.observe,
           interTokenStallMs: phonePerf.interTokenStallMs,
           firstUsefulDeadlineMs: applyAdaptiveTtft(
-            firstUsefulDeadlineMs('general_meeting_answer', phoneUsingLocalLlm, phoneViaServerCascade, phoneUsingUserEndpoint, phoneObservedLatency),
+            firstUsefulDeadlineMs('general_meeting_answer', phoneUsingLocalLlm),
             { llmHelper: llmHelper as any, hasImages: false, inputTokens: _estimatePerfTokens(`${message ?? ''}${context ?? ''}`) },
           ),
           isUsefulYet: () => full.trim().length >= 5,

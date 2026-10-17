@@ -126,6 +126,12 @@ export async function raceStreamWithDeadline(opts: {
   /** Bail predicate (e.g. superseded por a newer generation). */
   shouldAbort?: () => boolean;
   /**
+   * Per-token observer hook (perf wiring). Called with each token, guarded
+   * so a throwing observer never breaks the stream. Accepts both the plain
+   * observer shape and the secondary-stream factory shape.
+   */
+  observe?: ((token: string) => unknown) | (() => unknown);
+  /**
    * Called once quando o loop ends para ANY reason (timeout/stall/abort/done).
    * Use it para abort o underlying provider requisição (e.g. controller.abort()) so
    * a timed-out HTTP stream doesn't keep executando para its own network tempo limite —
@@ -136,7 +142,7 @@ export async function raceStreamWithDeadline(opts: {
 }): Promise<'done' | 'first_useful_timeout' | 'stall_timeout' | 'aborted'> {
   const {
     stream, firstUsefulDeadlineMs: fuMs, interTokenStallMs = LIVE_INTER_TOKEN_STALL_MS,
-    isSpeculative = false, onToken, isUsefulYet, onFirstUsefulTimeout, onStallTimeout, shouldAbort, onCleanup,
+    isSpeculative = false, onToken, isUsefulYet, onFirstUsefulTimeout, onStallTimeout, shouldAbort, onCleanup, observe,
   } = opts;
   const iterator = (stream as AsyncIterable<string>)[Symbol.asyncIterator]();
   const start = Date.now();
@@ -183,6 +189,11 @@ export async function raceStreamWithDeadline(opts: {
       if (res.done) { cleanup(); return 'done'; }
       lastTokenAt = Date.now();
       await onToken(res.value);
+      if (observe) {
+        try {
+          (observe as (token: string) => unknown)(res.value);
+        } catch { /* observer must never break the stream */ }
+      }
       if (!useful) useful = isUsefulYet();
     }
   } catch (e) {

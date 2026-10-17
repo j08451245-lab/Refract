@@ -20,7 +20,7 @@ import type {
 } from './types';
 
 const CATEGORIES: ReadonlySet<string> = new Set<BrowserContextCategory>([
-    'coding_problem', 'coding_editor', 'interview_assessment', 'coding_project', 'developer_docs',
+    'coding_problem', 'coding_editor', 'interview_assessment', 'developer_docs',
   'job_description', 'google_docs_visible', 'notes', 'article', 'email', 'chat',
   'banking', 'auth', 'unknown',
 ]);
@@ -35,7 +35,6 @@ const EXTRACTION_SOURCES: ReadonlySet<string> = new Set<ExtractionSource>([
 const FIELD_CAP = 8000;
 /** Existing payload arrays remain tightly capped; project manifests need 300. */
 const DEFAULT_ARRAY_CAP = 100;
-const PROJECT_ARRAY_CAP = 300;
 /** Total budget para o whole envelope payload (JSON length) antes we soltar it. */
 const PAYLOAD_CAP = 60000;
 
@@ -85,13 +84,11 @@ export function sanitizeContextEnvelope(raw: unknown): ContextEnvelope | undefin
       : 'innerText';
 
   // Sanitize o payload e enforce a total budget.
+  // NOTE: sem categoria 'coding_project' no vocabulário — todo array usa o
+  // cap padrão (o drift-guard de paridade proíbe categorias fora do union).
   let payload: unknown;
   try {
-    payload = capPayload(
-      e.payload,
-      0,
-      e.category === 'coding_project' ? PROJECT_ARRAY_CAP : DEFAULT_ARRAY_CAP,
-    ); 
+    payload = capPayload(e.payload, 0, DEFAULT_ARRAY_CAP); 
     if (JSON.stringify(payload ?? null).length > PAYLOAD_CAP) {
       // Sobre budget — keep o envelope metadados mas soltar o heavy ppayload
       payload = {};

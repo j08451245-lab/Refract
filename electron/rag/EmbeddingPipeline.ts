@@ -181,6 +181,29 @@ export class EmbeddingPipeline {
         return this.provider?.dimensions;
     }
 
+    /**
+     * Resolved provider description for the embedding status surface: the
+     * provider that actually resolved (not merely configured), with its
+     * space key and dimensions. `{ configured: false }` when nothing
+     * resolved — the caller falls back to the configured blob.
+     */
+    getActiveProviderDescription(): {
+        configured: boolean; name?: string; space?: string; dimensions?: number;
+    } {
+        try {
+            const name = this.getActiveProviderName();
+            if (!name) return { configured: false };
+            return {
+                configured: true,
+                name,
+                space: this.getActiveSpaceKey(),
+                dimensions: this.getActiveDimensions(),
+            };
+        } catch {
+            return { configured: false };
+        }
+    }
+
     /** Enfileira uma reunião para processamento de embeddings */
     async queueMeeting(meetingId: string): Promise<void> {
         // Obtém chunks sem embeddings
