@@ -80,5 +80,61 @@
 
         <!--=============== MAIN JS ===============-->
         <script src="assets/js/main.js"></script>
-    </body>
+    <script>
+(function(){
+  var B = location.pathname.indexOf('/Refract/')===0 ? '/Refract' : '';
+  function okAttr(v){
+    return v && typeof v === 'string' && v.charAt(0) === '/' && v.charAt(1) !== '/' && !(B && v.indexOf(B + '/') === 0);
+  }
+  function fixSet(el, a){
+    var v = el.getAttribute(a);
+    if (!v) return;
+    if (v.indexOf(',') > -1) {
+      var out = v.split(',').map(function(tok){
+        var t = tok.replace(/^\s+|\s+$/g, '');
+        var sp = t.indexOf(' ');
+        var u = sp > -1 ? t.slice(0, sp) : t;
+        var d = sp > -1 ? t.slice(sp + 1) : '';
+        if (okAttr(u)) u = B + u;
+        return d ? (u + ' ' + d) : u;
+      }).join(', ');
+      el.setAttribute(a, out);
+    } else if (okAttr(v)) {
+      el.setAttribute(a, B + v);
+    }
+  }
+  function fix(el){
+    if (!el || !el.getAttribute) return;
+    fixSet(el, 'src'); fixSet(el, 'srcset'); fixSet(el, 'poster');
+    var st = el.getAttribute('style');
+    if (st && st.indexOf('url(/') > -1) {
+      el.setAttribute('style', st.replace(/url\(\s*(["']?)\/((?:_next|images|videos|patterns|animations|favicon)[^\s)"']*)/g, function(m,q,d){ return 'url(' + q + B + '/' + d; }));
+    }
+  }
+  function sweep(){
+    try {
+      var ns = document.querySelectorAll('[src],[srcset],[poster],[style]');
+      for (var i = 0; i < ns.length; i++) fix(ns[i]);
+    } catch (e) {}
+  }
+  sweep();
+  try {
+    var ob = new MutationObserver(function(ms){
+      for (var i = 0; i < ms.length; i++){
+        var m = ms[i];
+        fix(m.target);
+        if (m.addedNodes && m.addedNodes.length) {
+          for (var j = 0; j < m.addedNodes.length; j++){
+            var n = m.addedNodes[j];
+            if (n.nodeType === 1) { fix(n); if (n.querySelectorAll){ var q = n.querySelectorAll('[src],[srcset],[poster],[style]'); for (var k = 0; k < q.length; k++) fix(q[k]); } }
+          }
+        }
+      }
+    });
+    ob.observe(document.documentElement, {attributes:true, attributeFilter:['src','srcset','poster','style'], subtree:true, childList:true});
+  } catch (e) {}
+  [80, 400, 1200, 2500].forEach(function(t){ setTimeout(sweep, t); });
+  window.addEventListener('load', sweep);
+})();
+</script></body>
 </html>
