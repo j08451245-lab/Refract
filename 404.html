@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Refract</title><script>
+(function(){
+  var base = location.pathname.startsWith('/Refract/') ? '/Refract/' : '/';
+  var p = location.pathname.slice(base.length - 1);
+  if (!p || p === '/' || p === '/Refract/') { location.replace(base); return; }
+  if (/\.[a-z0-9]+$/i.test(p) || p.endsWith('/')) { location.replace(base.slice(0,-1) + p); return; }
+  location.replace(base + p + '.html');
+})();
+</script></head><body style="background:#0a0a0a;color:#666;font-family:sans-serif">Redirectingâ€¦</body></html>
