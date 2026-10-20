@@ -107,11 +107,20 @@ Every star pushes Refract higher in GitHub search, helping developers and job se
 
 ## Demo
 
+**The 30s launch film** (with sound):
+
+<video src="assets/refract-trailer.mp4" controls width="100%"></video>
+
+**Watch the 48s product film** (with sound): hook → real dark launcher with zoom-to-click → live invisible overlay answering in <500ms → local RAG memory + any-model reasoning → private-by-architecture close.
+
+<details>
+<summary>Extended product film — the real app, live</summary>
+
 <video src="assets/refract-demo.mp4" poster="assets/refract-demo-poster.png" controls width="100%"></video>
 
 ![Refract product demo teaser](assets/refract-demo-teaser.gif)
 
-**Watch the 48s product film** (with sound): hook → real dark launcher with zoom-to-click → live invisible overlay answering in <500ms → local RAG memory + any-model reasoning → private-by-architecture close.
+</details>
 
 This demo shows **a complete live meeting scenario**:
 
