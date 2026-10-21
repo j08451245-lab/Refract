@@ -107,16 +107,20 @@ Every star pushes Refract higher in GitHub search, helping developers and job se
 
 ## Demo
 
-**The 30s launch film** (with sound):
+**The 30s launch film** — click the preview to watch with sound:
 
-<video src="assets/refract-trailer.mp4" controls width="100%"></video>
+[![The 30s Refract launch film](assets/refract-trailer-preview.gif)](assets/refract-trailer.mp4)
+
+▶ **[Watch the full 30s film with sound (MP4, 11 MB)](assets/refract-trailer.mp4)**
 
 **Watch the 48s product film** (with sound): hook → real dark launcher with zoom-to-click → live invisible overlay answering in <500ms → local RAG memory + any-model reasoning → private-by-architecture close.
 
 <details>
 <summary>Extended product film — the real app, live</summary>
 
-<video src="assets/refract-demo.mp4" poster="assets/refract-demo-poster.png" controls width="100%"></video>
+[![Watch the 48s product film](assets/refract-demo-poster.png)](assets/refract-demo.mp4)
+
+▶ **[Watch the 48s product film with sound (MP4)](assets/refract-demo.mp4)**
 
 ![Refract product demo teaser](assets/refract-demo-teaser.gif)
 
@@ -130,6 +134,12 @@ This demo shows **a complete live meeting scenario**:
 - Instant generation of what to say next
 - Follow-up questions and concise responses
 - All happening live, without recording or post-processing
+
+### The overlay, up close
+
+<img src="assets/overlay-preview.png" width="840" alt="Refract's invisible overlay: audio-capture diagnostics, quick actions, free-form ask box, and model selector">
+
+One keystroke away, never on screen share: the overlay surfaces a one-line answer while the meeting keeps running. Quick actions reframe the question (Clarify, Brainstorm, Follow Up), `Ctrl + Shift + H` grabs a selective screenshot, and live capture diagnostics catch a muted mic before it costs you an answer.
 
 <details>
 <summary>Previous demo (GIF)</summary>
