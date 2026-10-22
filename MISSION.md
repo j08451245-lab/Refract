@@ -1,0 +1,87 @@
+# MISSION.md — Worklog & backlog
+
+Persistent memory for autonomous cycles. Read this first, update it last.
+Format: newest cycle at the top of "Done". Keep it honest — no claimed work.
+
+Last updated: 2026-10-22 (night cycle)
+
+---
+
+## Done (most recent first)
+
+### 2026-10-22 — overnight: 3 features (all pushed to `application/main`)
+
+- `583ae89` chore(build): NSIS per-machine installs (`perMachine: true`).
+- `a68c979` feat(privacy): **ExportRedactionShield** — pure, never-throws
+  redaction of validated PII (email, phone, CPF mod-11, card Luhn) and live
+  secrets (OpenAI/GitHub/AWS/Google/Slack/GitLab keys, JWT, bearer). IPC
+  `privacy:redact-text` / `privacy:analyze-text` (counts only). MeetingDetails
+  "Safe copy" button (fail-closed). 14 tests.
+- `1aaa7d0` feat(usage): **UsageLedger** — per-stream estimated token counts
+  (chars/4) from the single `LLMHelper.streamChat` funnel; JSONL store with
+  rotation + corruption tolerance; monthly budget guard (warn-only). IPC
+  `usage-ledger:*`. Settings → Intelligence → "AI usage" card. 13 tests.
+- `8e5b1d8` feat(insights): **MeetingInsightsEngine** — deterministic post-
+  meeting analytics (talk-time, engagement 0–100 + 5 subscores, questions,
+  keywords, pace, silence dynamics, key moments). Persisted at
+  `summary_json.detailedSummary.meetingInsights` (additive, no flag, no
+  migration). Backfill via `DatabaseManager.backfillMeetingInsights` + IPC.
+  MeetingDetails "Insights" tab. 15 tests.
+- `9125f09` fix(intelligence): deflake HindsightMemory drain tests (polling).
+
+Suite status at end of cycle: intelligence 550 (541 pass / 9 todo),
+llm 2315 (2297 pass), renderer 156/156, typecheck 0, vite + esbuild OK.
+
+### 2026-10-21 — presentation-ready repo
+
+- Launch film v5 in README (GIF preview + links; GitHub strips `<video>` tags).
+- Overlay showcase section (`assets/overlay-preview.png`).
+- Electron binary restored; 2.9.0 installer built (per-machine) and installed.
+
+---
+
+## In progress
+
+- Nothing half-finished. Everything committed and pushed.
+
+## Next (ordered backlog)
+
+1. **Budget warning must reach the user.** Currently `UsageLedger.guardAdvice`
+   only logs to the main-process console. Add a one-way IPC event
+   (`usage-ledger:budget-warning`, deduped per month/threshold) and a small
+   renderer toast. No flag, additive. Tests: pure dedupe helper.
+2. **README "What's new".** Short section for Insights / AI usage / Safe copy
+   with one screenshot each if cheap (can reuse existing assets or skip).
+3. **Chore(usage):** drop dead `budgetCacheKey` field in `UsageLedger.ts`
+   (leftover from early draft, unused).
+4. **Insights coverage nudge:** in MeetingDetails Insights tab, show
+   "transcript coverage" (usableTurns / turns) when < 100% so users understand
+   limited-data verdicts. Pure UI, no IPC.
+5. **Safe copy for follow-up draft?** Deferred: redacting a message you are
+   about to send removes useful context (names). Only if user asks.
+6. **origin fork sync** — waiting on user decision. Do not touch.
+
+## Decisions log
+
+- 2026-10-22: Features are additive and flag-free by default; no new
+  intelligence flags (avoids touching the 3 pinned flag tests).
+- 2026-10-22: Usage analytics store counts only (never text). Estimated tokens
+  (chars/4) are labeled "est." in UI — never presented as billing truth.
+- 2026-10-22: Redaction is fail-closed (if IPC fails, nothing is copied).
+- 2026-10-22: `ProfileIntelligenceIcon.tsx` (untracked, broken `import react
+  from 'refract'`, unused) was moved out of the repo to
+  `%TEMP%\opencode\ProfileIntelligenceIcon.tsx.bak` because it broke `tsc`.
+- 2026-10-21: README videos → animated GIF preview + links (GitHub sanitizer
+  strips `<video>`).
+- 2026-10-21: NSIS installer switched to per-machine Program Files.
+
+## Known environment constraints
+
+- `better-sqlite3` ABI mismatch under plain node: DB paths untestable headless.
+  Keep logic in pure modules (see `MeetingInsightsEngine`, `UsageLedger`,
+  `ExportRedaction` as the pattern).
+- Visual UI cannot be verified headlessly; verify via `npm run build` (tsc +
+  vite) and, when the user is around, an isolated-profile dev run.
+- Windows timers have ~15 ms granularity: use polling in timing tests.
+- `npm run build` wipes `dist-electron/` (clean step) — run `build:electron`
+  afterwards before launching the app.
