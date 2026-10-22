@@ -9,6 +9,7 @@ import {
   ExportRedactionShield,
   getRedactionShield,
   isValidCpf,
+  isValidCnpj,
   luhnValid,
   REDACT_MAX_INPUT_CHARS,
 } from '../../../dist-electron/electron/intelligence/ExportRedaction.js';
@@ -21,6 +22,9 @@ const PHONE_BR = '+55 (11) 98765-4321';
 const PHONE_INTL = '+1 415 555 2671';
 const CPF_VALID = '529.982.247-25'; // classic mod-11 valid sample
 const CPF_INVALID = '111.222.333-44';
+const CNPJ_VALID = '11.222.333/0001-81'; // mod-11 valid sample
+const CNPJ_INVALID = '11.222.333/0001-82';
+const CNPJ_BARE = '11222333000181';
 const CARD_VISA = '4111 1111 1111 1111'; // Luhn valid
 const CARD_INVALID = '4111 1111 1111 1112';
 const OPENAI_KEY = 'sk-proj-AbCdEfGhIjKlMnOpQrStUvWx';
@@ -55,6 +59,14 @@ describe('ExportRedaction — detectors redact validated identifiers', () => {
     assert.ok(!r.text.includes(CPF_VALID));
     assert.ok(r.text.includes(CPF_INVALID));
     assert.equal(r.findings.find((f) => f.kind === 'cpf').count, 1);
+  });
+
+  test('CNPJ removed only when mod-11 valid — masked and bare forms', () => {
+    const r = redactAll(`company ${CNPJ_VALID} / ${CNPJ_BARE}; fake ${CNPJ_INVALID}`);
+    assert.ok(!r.text.includes(CNPJ_VALID));
+    assert.ok(!r.text.includes(CNPJ_BARE));
+    assert.ok(r.text.includes(CNPJ_INVALID));
+    assert.equal(r.findings.find((f) => f.kind === 'cnpj').count, 2);
   });
 
   test('card numbers removed only when Luhn-valid', () => {
@@ -125,10 +137,14 @@ describe('ExportRedaction — resilience + contract', () => {
     assert.equal(r.findings.find((f) => f.kind === 'email').count, 1);
   });
 
-  test('validators are pinned (CPF mod-11, Luhn)', () => {
+  test('validators are pinned (CPF/CNPJ mod-11, Luhn)', () => {
     assert.equal(isValidCpf('52998224725'), true);
     assert.equal(isValidCpf('11111111111'), false);
     assert.equal(isValidCpf('123'), false);
+    assert.equal(isValidCnpj('11222333000181'), true);
+    assert.equal(isValidCnpj('11222333000182'), false);
+    assert.equal(isValidCnpj('00000000000000'), false);
+    assert.equal(isValidCnpj('123'), false);
     assert.equal(luhnValid('4111111111111111'), true);
     assert.equal(luhnValid('4111111111111112'), false);
     assert.equal(luhnValid('123456789012'), false); // too short

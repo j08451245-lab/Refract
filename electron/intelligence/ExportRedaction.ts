@@ -46,6 +46,7 @@ const REPLACEMENTS: Record<string, string> = {
   email: '[email removed]',
   phone: '[phone removed]',
   cpf: '[document number removed]',
+  cnpj: '[document number removed]',
   'card-number': '[card number removed]',
 };
 
@@ -80,6 +81,8 @@ const DETECTORS: Detector[] = [
   { kind: 'email', policy: 'personal-data', re: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+\b/g },
   // CPF with or without mask, VALIDATED (mod-11)
   { kind: 'cpf', policy: 'personal-data', re: /\b(?:\d{3}[.\s]?\d{3}[.\s]?\d{3}[-\s]?\d{2}|\d{11})\b/g, guard: (m) => isValidCpf(m.replace(/[^\d]/g, '')) },
+  // CNPJ with or without mask (12.345.678/0001-90), VALIDATED (mod-11)
+  { kind: 'cnpj', policy: 'personal-data', re: /\b(?:\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}|\d{14})\b/g, guard: (m) => isValidCnpj(m.replace(/[^\d]/g, '')) },
   // Card numbers 13–19 digits (grouped with space/dash or bare), VALIDATED (Luhn)
   { kind: 'card-number', policy: 'personal-data', re: /\b(?:\d[ -]?){12,18}\d\b/g, guard: (m) => luhnValid(m.replace(/[^\d]/g, '')) },
   // International/Brazilian phone — ≥9 digits in the match, ≤15 (dots excluded:
@@ -121,6 +124,20 @@ export function isValidCpf(digits: string): boolean {
   dv = (sum * 10) % 11;
   if (dv === 10) dv = 0;
   return dv === Number(digits[10]);
+}
+
+export function isValidCnpj(digits: string): boolean {
+  if (!/^\d{14}$/.test(digits) || /^(\d)\1{13}$/.test(digits)) return false;
+  const dvAt = (len: number): number => {
+    const weights = len === 12
+      ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+      : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(digits[i]) * weights[i];
+    const rem = sum % 11;
+    return rem < 2 ? 0 : 11 - rem;
+  };
+  return dvAt(12) === Number(digits[12]) && dvAt(13) === Number(digits[13]);
 }
 
 export class ExportRedactionShield {
