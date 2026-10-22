@@ -1423,6 +1423,11 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                                             {grade === 'limited-data' && (
                                                 <p className="text-[11px] text-text-tertiary">Limited data — transcript too short for a fair verdict.</p>
                                             )}
+                                            {typeof ins.usableTurns === 'number' && typeof ins.turns === 'number' && ins.usableTurns < ins.turns && (
+                                                <p className="text-[11px] text-text-tertiary">
+                                                    {ins.usableTurns} of {ins.turns} transcript turns had text to analyze — empty or silent turns are excluded.
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
