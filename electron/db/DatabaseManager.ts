@@ -35,6 +35,7 @@ import fs from 'fs';
 import os from 'os';
 import * as sqliteVec from 'sqlite-vec';
 import { buildLegacySpaceCaseSql } from '../rag/embeddingSpace';
+import { MeetingInsightsEngine } from '../intelligence/MeetingInsightsEngine';
 import type { ActionItem, DecisionItem, FollowUpDraft, MeetingSummaryGenerationMeta, MeetingSummaryModeMeta, MeetingSummarySectionV3, NoteBlock, PersonMention, QuestionItem, RiskItem, SourceQualityMeta, SpeakerLabelMap, SummaryStatus, TimelineItem } from '../services/meeting/types';
 
 // Interfaces para nossos objetos de dados
@@ -1580,6 +1581,76 @@ export class DatabaseManager {
             return info.changes > 0;
         } catch (error) {
             console.error(`[DatabaseManager] Failed to replace detailed summary for meeting ${id}:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * MEETING INSIGHTS BACKFILL: preenche summary_json.detailedSummary.meetingInsights
+     * para reuniões salvas ANTES desse recurso existir. Determinístico/no-LLM (puro),
+     * idempotente (reuniões que já têm meetingInsights são puladas). Lida com lotes
+     * (padrão 200 por chamada) e nunca lança — retorno é { attempted, updated, failed,
+     * remaining } para o caller decidir se precisa de outra passada.
+     */
+    public backfillMeetingInsights(limit: number = 200): { attempted: number; updated: number; failed: number; remaining: number } {
+        const empty = { attempted: 0, updated: 0, failed: 0, remaining: 0 };
+        if (!this.db) return empty;
+        try {
+            const engine = new MeetingInsightsEngine();
+            // Idsomeeting que ainda NÃO têm detailedSummary.meetingInsights (inclui rows com
+            // summary_json inválido/ausente — elas ganham um blob fresco apenas com insights).
+            const rows = this.db.prepare('SELECT id, summary_json FROM meetings ORDER BY created_at DESC').all() as any[];
+            const missing: Array<{ id: string }> = [];
+            for (const row of rows) {
+                if (missing.length >= limit) break;
+                try {
+                    const data = JSON.parse(row.summary_json || '{}');
+                    const detailed = data?.detailedSummary || {};
+                    if (!detailed.meetingInsights) missing.push({ id: String(row.id) });
+                } catch {
+                    missing.push({ id: String(row.id) });
+                }
+            }
+            let updated = 0;
+            let failed = 0;
+            for (const { id } of missing) {
+                try {
+                    const details = this.getMeetingDetails(id);
+                    const segments = Array.isArray(details?.transcript) ? details!.transcript : [];
+                    const durRow = this.db!.prepare('SELECT duration_ms FROM meetings WHERE id = ?').get(id) as any;
+                    const durationMs = Math.max(0, Math.round(Number(durRow?.duration_ms) || 0));
+                    const report = engine.compute({
+                        meetingId: id,
+                        segments,
+                        durationMs,
+                        mode: (details?.detailedSummary as any)?.mode?.templateType ?? null,
+                    });
+                    const ok = this.mergeKeyIntoDetailedSummary(id, report as unknown as Record<string, unknown>);
+                    if (ok) updated++; else failed++;
+                } catch {
+                    failed++;
+                }
+            }
+            return { attempted: missing.length, updated, failed, remaining: 0 };
+        } catch (error) {
+            console.error('[DatabaseManager] backfillMeetingInsights failed:', error);
+            return empty;
+        }
+    }
+
+    /** Merge genérico de uma chave dentro do detailedSummary existente (preserva irmãos). */
+    public mergeKeyIntoDetailedSummary(id: string, patch: Record<string, unknown>): boolean {
+        if (!this.db) return false;
+        try {
+            const row = this.db.prepare('SELECT summary_json FROM meetings WHERE id = ?').get(id) as any;
+            if (!row) return false;
+            const existingData = JSON.parse(row.summary_json || '{}');
+            const currentDetailed = existingData?.detailedSummary && typeof existingData.detailedSummary === 'object' ? existingData.detailedSummary : {};
+            const newData = { ...existingData, detailedSummary: { ...currentDetailed, ...patch } };
+            const info = this.db.prepare('UPDATE meetings SET summary_json = ? WHERE id = ?').run(JSON.stringify(newData), id);
+            return info.changes > 0;
+        } catch (error) {
+            console.error(`[DatabaseManager] mergeKeyIntoDetailedSummary failed for meeting ${id}:`, error);
             return false;
         }
     }

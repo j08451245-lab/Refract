@@ -13961,6 +13961,14 @@ export function initializeIpcHandlers(appState: AppState): void {
     return DatabaseManager.getInstance().updateMeetingSummary(id, updates);
   });
 
+  // MEETING INSIGHTS — backfill deterministic analytics (talk-time, engagement,
+  // questions, keywords, pace, key moments) into summary_json.detailedSummary.meetingInsights
+  // for meetings saved before the feature existed. Pure/no-LLM, idempotent, never throws.
+  // The renderer can call this lazily (e.g. when the user opens an old meeting's details).
+  safeHandle('meeting-insights:backfill', async () => {
+    return DatabaseManager.getInstance().backfillMeetingInsights(200);
+  });
+
   // Meeting Notes V3 — regenerate the full structured notes for a saved meeting, optionally
   // with a different mode (templateType) and follow-up tone. Runs the map-reduce pipeline on
   // the stored transcript off the UI thread; honors the post_call_summary data scope.

@@ -209,11 +209,55 @@ interface MeetingDetailsProps {
     onOpenSettings: () => void;
 }
 
+// ==========================================================================================
+// MEETING INSIGHTS — deterministic post-meeting analytics (computed in the main process by
+// electron/intelligence/MeetingInsightsEngine.ts and persisted under
+// summary_json.detailedSummary.meetingInsights; schemaVersion 1). Pure presentation here:
+// every value is already bounded 0..1 / 0..100 by the engine, and any missing field renders
+// as an honest placeholder instead of "NaN%"
+// ==========================================================================================
+
+const fmtInsRelMs = (ms: number | null | undefined): string => {
+    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return '—';
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m}:${String(s).padStart(2, '0')}`;
+};
+
+const fmtInsPct = (v: number | null | undefined): string => {
+    const n = typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 100) : 0;
+    return `${Math.max(0, Math.min(100, n))}%`;
+};
+
+const insightsGradePill = (grade: string): string =>
+    grade === 'great' ? 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10'
+        : grade === 'good' ? 'text-emerald-300 border-emerald-500/25 bg-emerald-500/5'
+        : grade === 'needs-work' ? 'text-amber-400 border-amber-400/25 bg-amber-400/10'
+        : 'text-text-tertiary border-border-subtle bg-bg-item-active';
+
+const INSIGHTS_SUBSCORES: Array<{ key: string; label: string }> = [
+    { key: 'participation', label: 'Balance' },
+    { key: 'depth', label: 'Depth' },
+    { key: 'interaction', label: 'Interaction' },
+    { key: 'flow', label: 'Flow' },
+    { key: 'focus', label: 'Focus' },
+];
+
+const InsightsBar: React.FC<{ pct: number; color: string }> = ({ pct, color }) => (
+    <div className="h-1.5 w-full rounded-full bg-bg-item-active overflow-hidden">
+        <div
+            className={`h-full rounded-full ${color}`}
+            style={{ width: `${Math.max(2, Math.min(100, Number.isFinite(pct) ? pct : 2))}%` }}
+        />
+    </div>
+);
+
+
 const MeetingDetails: React.FC<MeetingDetailsProps> = ({ meeting: initialMeeting }) => {
     // Precisamos de estado local para o objeto reunião para refletir atualizações
     // otimistas
     const [meeting, setMeeting] = useState<Meeting>(initialMeeting);
-    const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'usage'>('summary');
+    const [activeTab, setActiveTab] = useState<'summary' | 'insights' | 'transcript' | 'usage'>('summary');
     const [query, setQuery] = useState('');
     const [isCopied, setIsCopied] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -265,6 +309,18 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = ({ meeting: initialMeeting
 
     const copyRecipe = (text: string) => {
         navigator.clipboard?.writeText(text || '').catch(() => { /* swallow */ });
+    };
+
+    // Insights: reuniões salvas antes do recurso existem sem o blob — backfill one-shot
+    // (determinístico, local, sem LLM) na própria reunião; recarrega details no fim.
+    const [isComputingInsights, setIsComputingInsights] = useState(false);
+    const computeInsights = async () => {
+        if (isComputingInsights || !window.electronAPI?.meetingInsightsBackfill) return;
+        setIsComputingInsights(true);
+        try {
+            await window.electronAPI.meetingInsightsBackfill();
+            await reloadMeeting();
+        } catch { /* swallow */ } finally { setIsComputingInsights(false); }
     };
 
     const reloadMeeting = async () => {
@@ -424,6 +480,36 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
             textToCopy = meeting.transcript.map(t => `[${formatTime(t.timestamp)}] ${resolveSpeakerName(t.speaker)}: ${t.text}`).join('\n');
         } else if (activeTab === 'usage' && meeting.usage) {
             textToCopy = meeting.usage.map(u => `Q: ${u.question || ''}\nA: ${u.answer || ''}`).join('\n\n');
+        } else if (activeTab === 'insights') {
+            const ins = (meeting.detailedSummary as any)?.meetingInsights as any;
+            if (ins) {
+                const talkLine = (ins.talkTime?.bySpeaker || [])
+                    .map((s: any) => `${resolveSpeakerName(s.speaker)} ${fmtInsPct(s.share)}${s.wpm ? ` (${s.wpm} wpm)` : ''}`)
+                    .join(', ') || 'N/A';
+                const subsLine = INSIGHTS_SUBSCORES
+                    .map(({ key, label }) => `${label} ${fmtInsPct((ins.engagement?.subscores?.[key] ?? 0) as number)}`)
+                    .join(' | ');
+                const moments = (ins.keyMoments ? [
+                    ins.keyMoments.firstQuestionAtMs != null ? `first question @ ${fmtInsRelMs(ins.keyMoments.firstQuestionAtMs)}` : null,
+                    ins.keyMoments.firstDecisionAtMs != null ? `decision @ ${fmtInsRelMs(ins.keyMoments.firstDecisionAtMs)}` : null,
+                    ins.keyMoments.firstActionAtMs != null ? `action @ ${fmtInsRelMs(ins.keyMoments.firstActionAtMs)}` : null,
+                    ins.keyMoments.firstRiskAtMs != null ? `risk @ ${fmtInsRelMs(ins.keyMoments.firstRiskAtMs)}` : null,
+                ] : []).filter(Boolean).join(', ') || 'None';
+                textToCopy = [
+                    `Meeting: ${meeting.title}`,
+                    `Date: ${new Date(meeting.date).toLocaleDateString()}`,
+                    '',
+                    `ENGAGEMENT: ${ins.engagement?.score ?? 0}/100 (${ins.engagement?.grade ?? 'n/a'})`,
+                    subsLine,
+                    `TALK TIME: ${talkLine}`,
+                    `QUESTIONS: ${ins.questions?.total ?? 0} total (user ${ins.questions?.user ?? 0}), ${(ins.questions?.per10Min ?? 0)}/10min`,
+                    `PACE: ${ins.pace?.overallWpm ?? 0} wpm | LONGEST SILENCE: ${fmtInsRelMs(ins.dynamics?.longestSilenceMs || 0)}`,
+                    `KEYWORDS: ${(ins.keywords?.unigrams || []).map((k: any) => k.word).join(', ') || 'None'}`,
+                    `KEY MOMENTS: ${moments}`,
+                ].join('\n');
+            } else {
+                textToCopy = `Meeting: ${meeting.title}\n\nNo insights computed yet.`;
+            }
         }
 
         if (!textToCopy) return;
@@ -532,7 +618,7 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                     {/* Abas projetadas para combinar com referência 1:1 (Container Pill Escuro */}
                     <div className="meeting-details-toolbar flex items-center justify-between mb-9 pb-6 border-b border-border-subtle">
                         <div className="meeting-details-tabs">
-                            {['summary', 'transcript', 'usage'].map((tab) => (
+                            {['summary', 'insights', 'transcript', 'usage'].map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab as any)}
@@ -560,7 +646,7 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                             className="meeting-details-copy h-8 flex items-center gap-2 rounded-lg border border-transparent px-3 text-[11px] font-medium text-text-secondary hover:text-text-primary hover:bg-bg-item-active hover:border-border-subtle transition-colors"
                         >
                             {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                            {isCopied ? 'Copied' : activeTab === 'summary' ? 'Copy full summary' : activeTab === 'transcript' ? 'Copy full transcript' : 'Copy usage'}
+                            {isCopied ? 'Copied' : activeTab === 'summary' ? 'Copy full summary' : activeTab === 'insights' ? 'Copy insights' : activeTab === 'transcript' ? 'Copy full transcript' : 'Copy usage'}
                         </button>
                     </div>
 
@@ -1231,6 +1317,143 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                                 )}
                             </motion.div>
                         )}
+
+                        {activeTab === 'insights' && (() => {
+                            const ins = (meeting.detailedSummary as any)?.meetingInsights as any;
+                            if (!ins) {
+                                return (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                        <div className="rounded-2xl border border-border-subtle bg-bg-item-active/40 px-8 py-10 text-center space-y-3">
+                                            <p className="text-sm font-medium text-text-primary">No insights yet for this meeting</p>
+                                            <p className="text-xs leading-relaxed text-text-tertiary max-w-md mx-auto">
+                                                Insights are computed locally from the transcript — talk-time balance, engagement sub-scores, questions, keywords, pace and key moments. Meetings recorded before this feature arrived don't have them yet; the backfill is one pass, deterministic, and never leaves your machine.
+                                            </p>
+                                            <button
+                                                onClick={computeInsights}
+                                                disabled={isComputingInsights}
+                                                className="inline-flex items-center gap-2 h-8 px-4 rounded-lg border border-border-subtle bg-bg-item-active text-[12px] font-medium text-text-primary transition-colors hover:bg-bg-item-hover disabled:opacity-50"
+                                            >
+                                                {isComputingInsights ? 'Computing…' : 'Compute insights'}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                );
+                            }
+                            const score = typeof ins.engagement?.score === 'number' ? ins.engagement.score : 0;
+                            const grade = typeof ins.engagement?.grade === 'string' ? ins.engagement.grade : 'limited-data';
+                            const speakers = Array.isArray(ins.talkTime?.bySpeaker) ? ins.talkTime.bySpeaker : [];
+                            const unigrams = Array.isArray(ins.keywords?.unigrams) ? ins.keywords.unigrams : [];
+                            const bigrams = Array.isArray(ins.keywords?.bigrams) ? ins.keywords.bigrams : [];
+                            const moments: Array<{ label: string; ms: number | null }> = [
+                                { label: 'First question', ms: ins.keyMoments?.firstQuestionAtMs ?? null },
+                                { label: 'Decision', ms: ins.keyMoments?.firstDecisionAtMs ?? null },
+                                { label: 'Action', ms: ins.keyMoments?.firstActionAtMs ?? null },
+                                { label: 'Risk', ms: ins.keyMoments?.firstRiskAtMs ?? null },
+                            ].filter((m) => m.ms != null && typeof m.ms === 'number');
+                            return (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+                                    {/* Engagement hero: score + grade + 5 sub-scores */}
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
+                                        <div className="rounded-2xl border border-border-subtle bg-bg-item-active/30 p-5 flex flex-col items-center justify-center text-center gap-2">
+                                            <div className="text-[40px] leading-none font-semibold text-text-primary">{score}</div>
+                                            <div className="text-[11px] text-text-tertiary">engagement / 100</div>
+                                            <span className={`inline-flex items-center h-5 px-2 rounded-full border text-[10px] font-medium ${insightsGradePill(grade)}`}>{grade}</span>
+                                            <div className="w-full mt-2"><InsightsBar pct={score} color={score >= 70 ? 'bg-emerald-400' : score >= 45 ? 'bg-emerald-300' : 'bg-amber-400'} /></div>
+                                        </div>
+                                        <div className="rounded-2xl border border-border-subtle bg-bg-item-active/30 p-5 space-y-3">
+                                            {INSIGHTS_SUBSCORES.map(({ key, label }) => {
+                                                const v = typeof ins.engagement?.subscores?.[key] === 'number' ? ins.engagement.subscores[key] : 0;
+                                                const pct = Math.max(0, Math.min(100, Math.round(v * 100)));
+                                                return (
+                                                    <div key={key} className="flex items-center gap-3">
+                                                        <span className="text-[12px] text-text-secondary w-24 shrink-0">{label}</span>
+                                                        <div className="flex-1"><InsightsBar pct={pct} color={pct >= 60 ? 'bg-emerald-400' : pct >= 35 ? 'bg-emerald-300' : 'bg-amber-400'} /></div>
+                                                        <span className="text-[11px] tabular-nums text-text-tertiary w-9 text-right">{pct}%</span>
+                                                    </div>
+                                                );
+                                            })}
+                                            {grade === 'limited-data' && (
+                                                <p className="text-[11px] text-text-tertiary">Limited data — transcript too short for a fair verdict.</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Talk time: share per speaker */}
+                                    {speakers.length > 0 && (
+                                        <div className="rounded-2xl border border-border-subtle bg-bg-item-active/30 p-5 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-[12px] font-medium text-text-primary">Talk time</p>
+                                                <span className="text-[11px] text-text-tertiary">balance {Math.round((ins.talkTime?.balance ?? 0) * 100)}%</span>
+                                            </div>
+                                            {speakers.map((s: any, i: number) => (
+                                                <div key={`${s.speaker}-${i}`} className="flex items-center gap-3">
+                                                    <span className="text-[12px] text-text-secondary w-32 truncate shrink-0" title={resolveSpeakerName(s.speaker)}>{resolveSpeakerName(s.speaker)}</span>
+                                                    <div className="flex-1"><InsightsBar pct={(s.share ?? 0) * 100} color={s.role === 'user' ? 'bg-emerald-400/80' : 'bg-sky-400/70'} /></div>
+                                                    <span className="text-[11px] tabular-nums text-text-tertiary w-10 text-right">{fmtInsPct(s.share)}</span>
+                                                    <span className="text-[11px] tabular-nums text-text-tertiary w-16 text-right">{s.wpm ? `${s.wpm} wpm` : ''}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Stats row */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="rounded-2xl border border-border-subtle bg-bg-item-active/30 p-4">
+                                            <p className="text-[11px] text-text-tertiary mb-1">Questions</p>
+                                            <p className="text-xl font-semibold text-text-primary">{ins.questions?.total ?? 0}</p>
+                                            <p className="text-[11px] text-text-tertiary mt-1">{ins.questions?.per10Min ?? 0}/10min · user {Math.round((ins.questions?.counterQuestionShare ?? 0) * 100)}%</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border-subtle bg-bg-item-active/30 p-4">
+                                            <p className="text-[11px] text-text-tertiary mb-1">Pace</p>
+                                            <p className="text-xl font-semibold text-text-primary">{ins.pace?.overallWpm ?? 0}<span className="text-[12px] text-text-tertiary font-normal"> wpm</span></p>
+                                            <p className="text-[11px] text-text-tertiary mt-1">words per minute</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border-subtle bg-bg-item-active/30 p-4">
+                                            <p className="text-[11px] text-text-tertiary mb-1">Longest silence</p>
+                                            <p className="text-xl font-semibold text-text-primary">{fmtInsRelMs(ins.dynamics?.longestSilenceMs ?? 0)}</p>
+                                            <p className="text-[11px] text-text-tertiary mt-1">between turns</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border-subtle bg-bg-item-active/30 p-4">
+                                            <p className="text-[11px] text-text-tertiary mb-1">Opening / closing Qs</p>
+                                            <p className="text-xl font-semibold text-text-primary">{ins.dynamics?.openingQuestions ?? 0} / {ins.dynamics?.closingQuestions ?? 0}</p>
+                                            <p className="text-[11px] text-text-tertiary mt-1">edge moments</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Key moments */}
+                                    {moments.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {moments.map((m) => (
+                                                <span key={m.label} className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full border border-border-subtle bg-bg-item-active text-[11px] text-text-secondary">
+                                                    <span className="text-text-tertiary">{m.label}</span>
+                                                    <span className="tabular-nums text-text-primary">{fmtInsRelMs(m.ms)}</span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Keywords */}
+                                    {(unigrams.length > 0 || bigrams.length > 0) && (
+                                        <div className="space-y-3">
+                                            {unigrams.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {unigrams.map((k: any) => (
+                                                        <span key={k.word} className="h-6 px-2.5 inline-flex items-center rounded-md border border-border-subtle bg-bg-item-active text-[11px] text-text-secondary">{k.word}<span className="ml-1.5 text-text-tertiary tabular-nums">×{k.count}</span></span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {bigrams.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {bigrams.map((k: any) => (
+                                                        <span key={k.word} className="h-6 px-2.5 inline-flex items-center rounded-md bg-bg-item-active text-[11px] text-text-tertiary italic">{k.word}<span className="ml-1.5 tabular-nums">×{k.count}</span></span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            );
+                        })()}
 
                         {activeTab === 'transcript' && (
                             <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

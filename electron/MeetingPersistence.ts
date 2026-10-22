@@ -58,6 +58,7 @@ import { buildPostCallEnhancements } from './services/post-call/PostCallWorkflow
 import { MeetingContextAssembler } from './services/meeting/MeetingContextAssembler';
 import type { MeetingSummaryTelemetryMeta } from './services/meeting/types';
 import { MeetingMemoryService } from './intelligence/MeetingMemoryService';
+import { MeetingInsightsEngine } from './intelligence/MeetingInsightsEngine';
 import { LongTermMemoryService } from './intelligence/memory/LongTermMemoryService';
 import { isIntelligenceFlagEnabled } from './intelligence/intelligenceFlags';
 import { recordAttribution, hindsightModeFor } from './intelligence/IntelligenceAttribution';
@@ -601,6 +602,32 @@ Return ONLY valid JSON (no markdown code blocks):
                 }
             } catch (memErr) {
                 console.warn('[MeetingMemoryV2] extraction skipped (non-fatal):', (memErr as any)?.message);
+            }
+
+            // MEETING INSIGHTS (always-on; deterministic, no-LLM, cost-free):
+            // HOW the meeting went — talk-time balance, engagement sub-scores,
+            // question stats, keywords, pace, silence dynamics, key moments.
+            // NEW key under summary_json (`meetingInsights`), additive and
+            // backward-compatible (no flag, no DB migration, never blocks).
+            try {
+                const insights = new MeetingInsightsEngine().compute({
+                    meetingId,
+                    segments: data.transcript,
+                    durationMs: data.durationMs,
+                    mode: modeSnapshot?.templateType,
+                });
+                (summaryData as any).meetingInsights = insights;
+                console.log('[MeetingInsights] persisted', {
+                    meetingId,
+                    turns: insights.turns,
+                    usableTurns: insights.usableTurns,
+                    speakers: insights.talkTime.bySpeaker.length,
+                    score: insights.engagement.score,
+                    grade: insights.engagement.grade,
+                    questions: insights.questions.total,
+                });
+            } catch (insErr) {
+                console.warn('[MeetingInsights] skipped (non-fatal):', (insErr as any)?.message);
             }
         } catch (e) {
             console.error("Error generating meeting metadata", e);

@@ -614,6 +614,7 @@ interface ElectronAPI {
       keyPointsTitle?: string;
     },
   ) => Promise<boolean>;
+  meetingInsightsBackfill: () => Promise<{ attempted: number; updated: number; failed: number; remaining: number }>;
   onMeetingsUpdated: (callback: () => void) => () => void;
 
   // Intelligence Mode Events
@@ -2145,6 +2146,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('update-meeting-title', { id, title }),
   updateMeetingSummary: (id: string, updates: any) =>
     ipcRenderer.invoke('update-meeting-summary', { id, updates }),
+  meetingInsightsBackfill: () => ipcRenderer.invoke('meeting-insights:backfill'),
   regenerateMeetingSummary: (id: string, opts?: { templateType?: string; tone?: 'professional' | 'warm' | 'concise' | 'friendly' }) =>
     ipcRenderer.invoke('regenerate-meeting-summary', { id, templateType: opts?.templateType, tone: opts?.tone }),
   regenerateMeetingFollowUp: (id: string, tone?: 'professional' | 'warm' | 'concise' | 'friendly') =>
