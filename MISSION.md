@@ -17,6 +17,11 @@ Last updated: 2026-10-22 (night cycle, after autonomy setup)
   (`budgetAdvisoryKey`) + one silent native Notification per month/threshold
   per run; console line kept. Warn-only. 4 new tests (17 total in the file).
   Also dropped dead `budgetCacheKey` field. Backlog items 1 and 3 done.
+- `955deff` docs(readme): What's new (insights, AI usage guard, safe copy).
+- `7c24330` feat(usage): AI usage card refreshes on `onMeetingsUpdated`.
+- `cd5f8f6` feat(insights): transcript coverage line when usableTurns < turns.
+- `e8fd81d` feat(privacy): CNPJ detector (mod-11 DV) in safe copy, masked + bare,
+  invalid patterns survive. 15 tests in the file.
 
 ### 2026-10-22 — overnight: 3 features (all pushed to `application/main`)
 
@@ -55,17 +60,15 @@ llm 2315 (2297 pass), renderer 156/156, typecheck 0, vite + esbuild OK.
 
 ## Next (ordered backlog)
 
-1. **README "What's new".** Short section for Insights / AI usage / Safe copy
-   with one screenshot each if cheap (can reuse existing assets or skip).
-2. **Insights coverage nudge:** in MeetingDetails Insights tab, show
-   "transcript coverage" (usableTurns / turns) when < 100% so users understand
-   limited-data verdicts. Pure UI, no IPC.
-3. **Usage ledger refresh:** the AI usage card only loads on mount; refresh
-   when a meeting ends (event already exists: `onMeetingsUpdated`) so totals
-   are current right after a session.
-4. **Safe copy for follow-up draft?** Deferred: redacting a message you are
-   about to send removes useful context (names). Only if user asks.
-5. **origin fork sync** — waiting on user decision. Do not touch.
+1. **Screenshots for the new features** (needs the app running with real data —
+   do this interactively with the user, not headless): Insights tab, AI usage
+   card, Safe copy notice. Then wire into README "What's new".
+2. **Insights trends across meetings:** a small "last 5 meetings" engagement
+   sparkline in Launcher, computed from persisted `meetingInsights` (pure
+   helper + test). Bigger item; design first.
+3. **Safe copy preview count in the button** (e.g. "Safe copy (3)") using the
+   existing `privacy:analyze-text` channel, debounced on panel open.
+4. **origin fork sync** — waiting on user decision. Do not touch.
 
 ## Decisions log
 
