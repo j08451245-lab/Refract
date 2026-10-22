@@ -10,6 +10,17 @@ import { LongTermMemoryService } from '../../../dist-electron/electron/intellige
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Windows tem granularidade de timer de ~15ms e o runner carrega CPU: assert por
+// polling com cota generosa em vez de sleep fixo (mesmo contrato: background drain).
+async function drainEventually(check, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!check()) {
+    if (Date.now() > deadline) return false;
+    await sleep(5);
+  }
+  return true;
+}
+
 describe('NoopMemoryProvider (disabled default)', () => {
   test('retain is a no-op, recall is empty, never throws', async () => {
     const p = new NoopMemoryProvider();
@@ -55,7 +66,7 @@ describe('HindsightRetainQueue — async, non-blocking', () => {
     q.enqueue({ content: 'a', scope: { userId: 'u' }, source: 'chat_history' });
     q.enqueue({ content: 'b', scope: { userId: 'u' }, source: 'chat_history' });
     assert.ok(seen.length <= 2); // não necessarily feito ainda — non-blocking
-    await sleep(40);
+    assert.ok(await drainEventually(() => seen.length >= 2), 'drain should finish in background');
     assert.deepEqual(seen, ['a', 'b']);
   });
   test('a throwing worker never stops the queue', async () => {
@@ -63,7 +74,7 @@ describe('HindsightRetainQueue — async, non-blocking', () => {
     const q = new HindsightRetainQueue(async (item) => { if (item.content === 'bad') throw new Error('x'); seen.push(item.content); });
     q.enqueue({ content: 'bad', scope: { userId: 'u' }, source: 'chat_history' });
     q.enqueue({ content: 'good', scope: { userId: 'u' }, source: 'chat_history' });
-    await sleep(30);
+    assert.ok(await drainEventually(() => seen.some((c) => c === 'good')), 'good item should be retained despite failed worker');
     assert.deepEqual(seen, ['good']);
   });
 });
