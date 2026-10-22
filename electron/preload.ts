@@ -618,6 +618,8 @@ interface ElectronAPI {
   usageLedgerStats: (windowMs?: number) => Promise<any>;
   usageLedgerBudgetGet: () => Promise<{ enabled: boolean; monthlyTokenBudget: number; usedTokensThisMonth: number; pctUsed: number; exceeded: boolean; warnAtPct: number; shouldWarn: boolean; monthKey: string }>;
   usageLedgerBudgetSet: (monthlyTokenBudget: number, warnAtPct?: number) => Promise<boolean>;
+  redactTextForExport: (text: string, policy?: 'personal-data' | 'secrets' | 'all') => Promise<{ text: string; findings: Array<{ kind: string; count: number }>; totalFindings: number }>;
+  analyzeTextForExport: (text: string, policy?: 'personal-data' | 'secrets' | 'all') => Promise<Array<{ kind: string; count: number }>>;
   onMeetingsUpdated: (callback: () => void) => () => void;
 
   // Intelligence Mode Events
@@ -2154,6 +2156,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   usageLedgerBudgetGet: () => ipcRenderer.invoke('usage-ledger:budget:get'),
   usageLedgerBudgetSet: (monthlyTokenBudget: number, warnAtPct?: number) =>
     ipcRenderer.invoke('usage-ledger:budget:set', { monthlyTokenBudget, warnAtPct }),
+  redactTextForExport: (text: string, policy?: 'personal-data' | 'secrets' | 'all') =>
+    ipcRenderer.invoke('privacy:redact-text', { text, policy }),
+  analyzeTextForExport: (text: string, policy?: 'personal-data' | 'secrets' | 'all') =>
+    ipcRenderer.invoke('privacy:analyze-text', { text, policy }),
   regenerateMeetingSummary: (id: string, opts?: { templateType?: string; tone?: 'professional' | 'warm' | 'concise' | 'friendly' }) =>
     ipcRenderer.invoke('regenerate-meeting-summary', { id, templateType: opts?.templateType, tone: opts?.tone }),
   regenerateMeetingFollowUp: (id: string, tone?: 'professional' | 'warm' | 'concise' | 'friendly') =>

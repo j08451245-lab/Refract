@@ -294,6 +294,8 @@ export interface ElectronAPI {
   usageLedgerStats: (windowMs?: number) => Promise<any>
   usageLedgerBudgetGet: () => Promise<{ enabled: boolean; monthlyTokenBudget: number; usedTokensThisMonth: number; pctUsed: number; exceeded: boolean; warnAtPct: number; shouldWarn: boolean; monthKey: string }>
   usageLedgerBudgetSet: (monthlyTokenBudget: number, warnAtPct?: number) => Promise<boolean>
+  redactTextForExport: (text: string, policy?: 'personal-data' | 'secrets' | 'all') => Promise<{ text: string; findings: Array<{ kind: string; count: number }>; totalFindings: number }>
+  analyzeTextForExport: (text: string, policy?: 'personal-data' | 'secrets' | 'all') => Promise<Array<{ kind: string; count: number }>>
   regenerateMeetingSummary: (id: string, opts?: { templateType?: string; tone?: 'professional' | 'warm' | 'concise' | 'friendly' }) => Promise<{ success: boolean; error?: string }>
   regenerateMeetingFollowUp: (id: string, tone?: 'professional' | 'warm' | 'concise' | 'friendly') => Promise<{ success: boolean; error?: string }>
   updateMeetingSpeakerLabels: (id: string, labels: Record<string, string>) => Promise<{ success: boolean; labels?: Record<string, string>; error?: string }>

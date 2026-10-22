@@ -113,6 +113,7 @@ import { recordAttribution, hindsightModeFor, type AttributionInput } from './in
 import { routeContext, isBackwardLookingQuery } from './intelligence/ContextRouter';
 import { SearchOrchestrator, type SearchCandidate } from './intelligence/SearchOrchestrator';
 import { getUsageLedger } from './intelligence/UsageLedger';
+import { getRedactionShield } from './intelligence/ExportRedaction';
 import { CHAT_MODE_PROMPT } from './llm/prompts';
 
 // Prompt System v2 (flag promptSystemV2): the manual-chat base prompt. When
@@ -13981,6 +13982,17 @@ export function initializeIpcHandlers(appState: AppState): void {
   });
   safeHandle('usage-ledger:budget:set', async (_event, { monthlyTokenBudget, warnAtPct }: { monthlyTokenBudget: number; warnAtPct?: number }) => {
     return getUsageLedger().setBudget(Number(monthlyTokenBudget) || 0, Number(warnAtPct) || 80);
+  });
+
+  // EXPORT REDACTION SHIELD — before notes/transcripts leave the machine (clipboard,
+  // future file exports), strip personal identifiers (email/phone/CPF/card — validated)
+  // and live credentials (API keys/PATs/JWT/bearer). Deterministic, local, never-throws.
+  // `privacy:analyze-text` returns COUNTS ONLY (no matched text ever leaves the process).
+  safeHandle('privacy:redact-text', async (_event, { text, policy }: { text: string; policy?: 'personal-data' | 'secrets' | 'all' }) => {
+    return getRedactionShield().redact(typeof text === 'string' ? text : '', { policy: policy || 'all' });
+  });
+  safeHandle('privacy:analyze-text', async (_event, { text, policy }: { text: string; policy?: 'personal-data' | 'secrets' | 'all' }) => {
+    return getRedactionShield().analyze(typeof text === 'string' ? text : '', { policy: policy || 'all' });
   });
 
   // Meeting Notes V3 — regenerate the full structured notes for a saved meeting, optionally

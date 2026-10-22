@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Search, Mail, Link, ChevronDown, Play, ArrowUp, Copy, Check, MoreHorizontal, Settings, ArrowRight, RefreshCw, Info, AlertTriangle, Eye, EyeOff, Sparkles, History, Pencil, X } from 'lucide-react';
+import { ArrowLeft, Search, Mail, Link, ChevronDown, Play, ArrowUp, Copy, Check, MoreHorizontal, Settings, ArrowRight, RefreshCw, Info, AlertTriangle, Eye, EyeOff, Sparkles, History, Pencil, X, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { genMessageId } from '../utils/messageId';
 import MeetingChatOverlay from './MeetingChatOverlay';
@@ -430,7 +430,7 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = ({ meeting: initialMeeting
         }
     };
 
-    const handleCopy = async () => {
+    const buildCopyText = (): string => {
         let textToCopy = '';
 
         if (activeTab === 'summary' && meeting.detailedSummary) {
@@ -512,14 +512,51 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
             }
         }
 
-        if (!textToCopy) return;
+        return textToCopy;
+    };
 
+    const writeToClipboard = async (text: string): Promise<boolean> => {
+        if (!text) return false;
         try {
-            await navigator.clipboard.writeText(textToCopy);
-            setIsCopied(true);
-            setTimeout(() => setIsCopied(false), 2000);
+            await navigator.clipboard.writeText(text);
+            return true;
         } catch (err) {
             console.error('Failed to copy content:', err);
+            return false;
+        }
+    };
+
+    const flashCopied = () => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+    };
+
+    const handleCopy = async () => {
+        if (await writeToClipboard(buildCopyText())) flashCopied();
+    };
+
+    // Privacy copy — runs the digest through the main-process redaction shield
+    // (emails, phones, CPF/CNPJ-shaped docs, card numbers, API keys, JWTs) before
+    // it touches the clipboard. Fail-closed: if redaction is unavailable, nothing
+    // is copied rather than silently leaking the raw text.
+    const [redactionNotice, setRedactionNotice] = useState<string | null>(null);
+    const handleCopyRedacted = async () => {
+        const raw = buildCopyText();
+        if (!raw) return;
+        let redacted = raw;
+        let total = 0;
+        try {
+            const res = await window.electronAPI?.redactTextForExport?.(raw, 'all');
+            if (!res || typeof res.text !== 'string') return;
+            redacted = res.text;
+            total = Number(res.totalFindings) || 0;
+        } catch {
+            return;
+        }
+        if (await writeToClipboard(redacted)) {
+            flashCopied();
+            setRedactionNotice(total > 0 ? `${total} removed` : 'Nothing sensitive');
+            setTimeout(() => setRedactionNotice(null), 2600);
         }
     };
 
@@ -641,13 +678,24 @@ ${meeting.detailedSummary.keyPoints?.map(item => `- ${item}`).join('\n') || 'Non
                         </div>
 
                         {/* Botão Copiar - Inline com Abas (Sempre visível) */}
-                        <button
-                            onClick={handleCopy}
-                            className="meeting-details-copy h-8 flex items-center gap-2 rounded-lg border border-transparent px-3 text-[11px] font-medium text-text-secondary hover:text-text-primary hover:bg-bg-item-active hover:border-border-subtle transition-colors"
-                        >
-                            {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                            {isCopied ? 'Copied' : activeTab === 'summary' ? 'Copy full summary' : activeTab === 'insights' ? 'Copy insights' : activeTab === 'transcript' ? 'Copy full transcript' : 'Copy usage'}
-                        </button>
+                        <div className="flex items-center gap-0.5">
+                            <button
+                                onClick={handleCopy}
+                                className="meeting-details-copy h-8 flex items-center gap-2 rounded-lg border border-transparent px-3 text-[11px] font-medium text-text-secondary hover:text-text-primary hover:bg-bg-item-active hover:border-border-subtle transition-colors"
+                            >
+                                {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                                {isCopied ? 'Copied' : activeTab === 'summary' ? 'Copy full summary' : activeTab === 'insights' ? 'Copy insights' : activeTab === 'transcript' ? 'Copy full transcript' : 'Copy usage'}
+                            </button>
+                            {/* Privacy copy — strips emails, phones, docs, cards and live credentials before the clipboard */}
+                            <button
+                                onClick={handleCopyRedacted}
+                                title="Copy with personal data and credentials removed (emails, phones, documents, card numbers, API keys, tokens)"
+                                className="meeting-details-copy-safe h-8 flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 text-[11px] font-medium text-text-tertiary hover:text-text-primary hover:bg-bg-item-active hover:border-border-subtle transition-colors"
+                            >
+                                <ShieldCheck size={14} />
+                                <span>{redactionNotice ?? 'Safe copy'}</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Conteúdo das Abas */}
