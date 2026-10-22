@@ -150,6 +150,14 @@ One keystroke away, never on screen share: the overlay surfaces a one-line answe
 
 ---
 
+## What's new
+
+- **Meeting Insights** — after each meeting, a local, deterministic analytics pass shows talk-time balance, an engagement score with five sub-scores, questions asked, recurring keywords, speaking pace and key moments. No LLM, no upload, no extra cost; older meetings get insights on demand.
+- **AI usage & budget guard** — Refract tracks *estimated* token usage locally (counts only — never what was said), breaks it down by task, and sends one heads-up when you approach a monthly token budget you set yourself. It warns; it never blocks.
+- **Safe copy** — copying notes, transcripts or insights from a saved meeting can strip emails, phone numbers, documents, card numbers and live credentials (API keys, JWTs) before anything reaches the clipboard.
+
+All three run entirely on-device and are additive: no new toggles, no data leaves your machine.
+
 ## Full Comparison: Refract vs Cluely vs Final Round AI vs LockedIn AI vs Interview Coder
 
 | Feature                   | Refract                   | Cluely               | Pluely     | LockedIn AI      | Final Round AI         |
