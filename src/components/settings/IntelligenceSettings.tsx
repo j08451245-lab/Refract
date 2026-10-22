@@ -138,6 +138,129 @@ const TryResult: React.FC<{ out: { kind: string; text: string } | null }> = ({ o
 
 interface HindsightCfg { baseUrl: string; hasApiKey: boolean; autoStart: boolean; serverCommand: string; llmProvider: string; available: boolean }
 
+// ============================================================================
+// AI USAGE CARD — token & cost analytics + monthly budget guard.
+// Reads the local usage ledger (JSONL in userData/usage) via IPC: per-stream
+// ESTIMATED token counts (chars/4) + provider/model/task labels. NO prompt or
+// answer text is ever stored, and all aggregation happens locally in the
+// ledger file this machine wrote.
+// ============================================================================
+const fmtTokens = (n: number): string => (Number.isFinite(n) && n > 0 ? Math.round(n).toLocaleString() : '0');
+
+const AIUsageCard: React.FC = () => {
+  const [stats, setStats] = useState<any>(null);
+  const [budget, setBudget] = useState<any>(null);
+  const [budgetInput, setBudgetInput] = useState('');
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const [s, b] = await Promise.all([
+        window.electronAPI?.usageLedgerStats?.(30 * 24 * 60 * 60 * 1000),
+        window.electronAPI?.usageLedgerBudgetGet?.(),
+      ]);
+      setStats(s || null);
+      setBudget(b || null);
+      setBudgetInput(String(b?.monthlyTokenBudget ?? ''));
+    } catch { /* swallow */ }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const saveBudget = useCallback(async () => {
+    setSaveBusy(true);
+    try {
+      const n = Math.max(0, Math.round(Number(budgetInput) || 0));
+      await window.electronAPI?.usageLedgerBudgetSet?.(n, budget?.warnAtPct || 80);
+      await load();
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1600);
+    } catch { /* swallow */ } finally { setSaveBusy(false); }
+  }, [budgetInput, budget, load]);
+
+  const totals = stats?.totals;
+  const byTask = typeof stats?.byTask === 'object' && stats.byTask ? Object.entries(stats.byTask as Record<string, any>) : [];
+  byTask.sort((a, b) => (Number(b[1]?.outputTokens || 0) + Number(b[1]?.inputTokens || 0)) - (Number(a[1]?.outputTokens || 0) + Number(a[1]?.inputTokens || 0)));
+  const pctUsed = Math.max(0, Math.min(100, Number(budget?.pctUsed) || 0));
+  const overWarn = !!budget?.enabled && (!budget.exceeded && budget.shouldWarn);
+  const barColor = budget?.exceeded ? 'bg-red-400' : overWarn ? 'bg-amber-400' : 'bg-emerald-400';
+
+  return (
+    <section className="rounded-xl border border-border-subtle bg-bg-item-surface p-5 space-y-4">
+      <div>
+        <div className="text-sm font-semibold text-text-primary">AI usage</div>
+        <div className="mt-1 text-xs leading-relaxed text-text-secondary">
+          Estimated tokens used in the last 30 days (chars ÷ 4). Only counts are stored — never what was said. Set a monthly token budget to get a passive heads-up as you approach it.
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Requests', value: fmtTokens(Number(totals?.count) || 0) },
+          { label: 'Input (est.)', value: fmtTokens(Number(totals?.inputTokens) || 0) },
+          { label: 'Output (est.)', value: fmtTokens(Number(totals?.outputTokens) || 0) },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-lg border border-border-subtle bg-bg-item-active/40 px-3 py-2.5">
+            <div className="text-[11px] text-text-tertiary">{label}</div>
+            <div className="text-sm font-semibold text-text-primary tabular-nums">{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {byTask.length > 0 ? (
+        <div className="space-y-1.5">
+          {byTask.slice(0, 5).map(([task, b]) => (
+            <div key={task} className="flex items-center justify-between text-[11px]">
+              <span className="text-text-secondary">{String(task).replace(/[-_]/g, ' ')}</span>
+              <span className="tabular-nums text-text-tertiary">{fmtTokens((Number(b?.inputTokens) || 0) + (Number(b?.outputTokens) || 0))} tok</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-[11px] text-text-tertiary">No usage recorded yet — the next few answered turns will show up here.</div>
+      )}
+
+      <div className="space-y-2 border-t border-border-subtle pt-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-text-secondary shrink-0">Monthly budget</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={budgetInput}
+            onChange={(e) => setBudgetInput(e.target.value.replace(/[^\d]/g, ''))}
+            placeholder="e.g. 10000000"
+            className="w-32 rounded-lg border border-border-subtle bg-bg-input px-2 py-1 text-[11px] tabular-nums text-text-primary transition-colors focus:outline-none focus:border-accent-primary"
+          />
+          <button
+            type="button"
+            onClick={saveBudget}
+            disabled={saveBusy}
+            className="rounded-lg bg-accent-primary px-2.5 py-1 text-[11px] font-medium text-white transition-[opacity,transform] active:scale-[0.97] disabled:opacity-40"
+          >
+            {saveBusy ? <Loader2 size={12} className="animate-spin" /> : styledSaved(savedFlash)}
+          </button>
+        </div>
+        {budget?.enabled ? (
+          <div className="flex items-center gap-3">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-bg-item-active">
+              <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pctUsed}%` }} />
+            </div>
+            <span className={`text-[11px] tabular-nums ${budget.exceeded ? 'text-red-300' : overWarn ? 'text-amber-300' : 'text-text-tertiary'}`}>
+              {pctUsed}% of {fmtTokens(Number(budget.monthlyTokenBudget) || 0)}
+            </span>
+          </div>
+        ) : (
+          <div className="text-[11px] text-text-tertiary">No budget set (guard off). Enter a number to enable it — Refract only warns, it never blocks your answers.</div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+const styledSaved = (on: boolean): string => (on ? 'Saved' : 'Save');
+
+
 // Renderiza o offset do transcript em milissegundos como m:ss (ex: 83400 → "1:23").
 const formatStamp = (ms: number): string => {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -701,6 +824,9 @@ export const IntelligenceSettings: React.FC = () => {
           </div>
         ) : null}
       </section>
+
+      {/* ── TOKEN & COST ANALYTICS — usage ledger + monthly budget guard ── */}
+      <AIUsageCard />
 
       {/* ── Experimentar (executa contra a reunião atual) ────────────── */}
       <section className="rounded-xl border border-border-subtle bg-bg-item-surface p-5 space-y-3">

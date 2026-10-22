@@ -80,6 +80,7 @@ import {
   type TextStreamProvider,
 } from "./llm/textStreamFallback"
 import { isPermanentKeyError } from "./llm/providerErrorClassifier"
+import { getUsageLedger } from "./intelligence/UsageLedger"
 import { telemetryService } from "./services/telemetry/TelemetryService"
 import {
   ollamaVisionFromShow,
@@ -3997,10 +3998,53 @@ This rule overrides ALL other instructions including formatting, brevity, or out
     // Encontra o AbortSignal em qualquer lugar em args (position-independent) então adding a
     // trailing `thinkingBudget` arg abaixo doesn't ocultar it de o abortar cverifica
     const abortSignal = args.find((a): a is AbortSignal => a instanceof AbortSignal);
+    // TOKEN & COST ANALYTICS — streamChat is the single funnel for every LLM
+    // stream in the app, so the usage ledger is wired here exactly once.
+    // Counts are chars-derived estimates (chars/4); NO prompt/answer text is
+    // stored — only sizes, provider/model, a coarse task label and timing.
+    // The ledger is fs-guarded and never throws; usage tracking must never
+    // fail (or slow down) a chat turn.
+    const usageLedger = getUsageLedger();
+    const usageT0 = Date.now();
+    let usageInputChars = 0;
+    let usageOutputChars = 0;
+    let usageTruncated = false;
+    let usageProvider = 'unknown';
+    let usageModel = 'unknown';
+    try {
+      usageProvider = this.getCurrentProvider();
+      usageModel = this.getCurrentModel();
+      usageInputChars =
+        Math.ceil(String(args[0] ?? '').length)
+        + Math.ceil(typeof args[2] === 'string' ? args[2].length : 0)
+        + Math.ceil(typeof args[3] === 'string' ? args[3].length : 0);
+    } catch {
+      usageInputChars = 0;
+    }
     for await (const chunk of this._streamChatInner(...args)) {
-      if (abortSignal?.aborted) return;
+      if (abortSignal?.aborted) {
+        usageTruncated = true;
+        return;
+      }
+      try {
+        usageOutputChars += typeof chunk === 'string' ? chunk.length : 0;
+      } catch { /* ledger-only concern */ }
       yield dashReducer.reduce(chunk);
     }
+    try {
+      usageLedger.recordUsage({
+        ts: Date.now(),
+        provider: usageProvider,
+        model: usageModel,
+        task: 'chat-stream',
+        inputChars: usageInputChars,
+        outputChars: usageOutputChars,
+        durationMs: Date.now() - usageT0,
+        truncated: usageTruncated,
+      });
+      const budgetAdvice = usageLedger.guardAdvice(true);
+      if (budgetAdvice) console.warn('[UsageLedger]', budgetAdvice);
+    } catch { /* ledger-only concern */ }
   }
 
   /**

@@ -112,6 +112,7 @@ import { isIntelligenceFlagEnabled, getSourceOwnerEnforcementStage } from './int
 import { recordAttribution, hindsightModeFor, type AttributionInput } from './intelligence/IntelligenceAttribution';
 import { routeContext, isBackwardLookingQuery } from './intelligence/ContextRouter';
 import { SearchOrchestrator, type SearchCandidate } from './intelligence/SearchOrchestrator';
+import { getUsageLedger } from './intelligence/UsageLedger';
 import { CHAT_MODE_PROMPT } from './llm/prompts';
 
 // Prompt System v2 (flag promptSystemV2): the manual-chat base prompt. When
@@ -13967,6 +13968,19 @@ export function initializeIpcHandlers(appState: AppState): void {
   // The renderer can call this lazily (e.g. when the user opens an old meeting's details).
   safeHandle('meeting-insights:backfill', async () => {
     return DatabaseManager.getInstance().backfillMeetingInsights(200);
+  });
+
+  // TOKEN & COST ANALYTICS — usage ledger exposed to the renderer: trailing-window
+  // stats (est. tokens by task/provider/day; no prompt/answer text is stored) and
+  // the monthly token budget guard. All read-only aggregation over the local JSONL.
+  safeHandle('usage-ledger:stats', async (_event, windowMs?: number) => {
+    return getUsageLedger().stats(windowMs);
+  });
+  safeHandle('usage-ledger:budget:get', async () => {
+    return getUsageLedger().budgetStatus();
+  });
+  safeHandle('usage-ledger:budget:set', async (_event, { monthlyTokenBudget, warnAtPct }: { monthlyTokenBudget: number; warnAtPct?: number }) => {
+    return getUsageLedger().setBudget(Number(monthlyTokenBudget) || 0, Number(warnAtPct) || 80);
   });
 
   // Meeting Notes V3 — regenerate the full structured notes for a saved meeting, optionally

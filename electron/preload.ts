@@ -615,6 +615,9 @@ interface ElectronAPI {
     },
   ) => Promise<boolean>;
   meetingInsightsBackfill: () => Promise<{ attempted: number; updated: number; failed: number; remaining: number }>;
+  usageLedgerStats: (windowMs?: number) => Promise<any>;
+  usageLedgerBudgetGet: () => Promise<{ enabled: boolean; monthlyTokenBudget: number; usedTokensThisMonth: number; pctUsed: number; exceeded: boolean; warnAtPct: number; shouldWarn: boolean; monthKey: string }>;
+  usageLedgerBudgetSet: (monthlyTokenBudget: number, warnAtPct?: number) => Promise<boolean>;
   onMeetingsUpdated: (callback: () => void) => () => void;
 
   // Intelligence Mode Events
@@ -2147,6 +2150,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateMeetingSummary: (id: string, updates: any) =>
     ipcRenderer.invoke('update-meeting-summary', { id, updates }),
   meetingInsightsBackfill: () => ipcRenderer.invoke('meeting-insights:backfill'),
+  usageLedgerStats: (windowMs?: number) => ipcRenderer.invoke('usage-ledger:stats', windowMs),
+  usageLedgerBudgetGet: () => ipcRenderer.invoke('usage-ledger:budget:get'),
+  usageLedgerBudgetSet: (monthlyTokenBudget: number, warnAtPct?: number) =>
+    ipcRenderer.invoke('usage-ledger:budget:set', { monthlyTokenBudget, warnAtPct }),
   regenerateMeetingSummary: (id: string, opts?: { templateType?: string; tone?: 'professional' | 'warm' | 'concise' | 'friendly' }) =>
     ipcRenderer.invoke('regenerate-meeting-summary', { id, templateType: opts?.templateType, tone: opts?.tone }),
   regenerateMeetingFollowUp: (id: string, tone?: 'professional' | 'warm' | 'concise' | 'friendly') =>

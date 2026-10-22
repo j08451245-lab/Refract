@@ -291,6 +291,9 @@ export interface ElectronAPI {
   updateMeetingTitle: (id: string, title: string) => Promise<boolean>
   updateMeetingSummary: (id: string, updates: { overview?: string, actionItems?: string[], keyPoints?: string[], actionItemsTitle?: string, keyPointsTitle?: string }) => Promise<boolean>
   meetingInsightsBackfill: () => Promise<{ attempted: number; updated: number; failed: number; remaining: number }>
+  usageLedgerStats: (windowMs?: number) => Promise<any>
+  usageLedgerBudgetGet: () => Promise<{ enabled: boolean; monthlyTokenBudget: number; usedTokensThisMonth: number; pctUsed: number; exceeded: boolean; warnAtPct: number; shouldWarn: boolean; monthKey: string }>
+  usageLedgerBudgetSet: (monthlyTokenBudget: number, warnAtPct?: number) => Promise<boolean>
   regenerateMeetingSummary: (id: string, opts?: { templateType?: string; tone?: 'professional' | 'warm' | 'concise' | 'friendly' }) => Promise<{ success: boolean; error?: string }>
   regenerateMeetingFollowUp: (id: string, tone?: 'professional' | 'warm' | 'concise' | 'friendly') => Promise<{ success: boolean; error?: string }>
   updateMeetingSpeakerLabels: (id: string, labels: Record<string, string>) => Promise<{ success: boolean; labels?: Record<string, string>; error?: string }>
