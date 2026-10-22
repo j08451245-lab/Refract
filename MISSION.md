@@ -3,11 +3,20 @@
 Persistent memory for autonomous cycles. Read this first, update it last.
 Format: newest cycle at the top of "Done". Keep it honest — no claimed work.
 
-Last updated: 2026-10-22 (night cycle)
+Last updated: 2026-10-22 (night cycle, after autonomy setup)
 
 ---
 
 ## Done (most recent first)
+
+### 2026-10-22 — autonomy setup + first backlog items
+
+- `docs(agents)`: `AGENTS.md` (operating agreement; gitignored by repo policy —
+  lives locally) + `MISSION.md` (this worklog) committed.
+- `b569589` feat(usage): budget guard now reaches the user — stable dedupe key
+  (`budgetAdvisoryKey`) + one silent native Notification per month/threshold
+  per run; console line kept. Warn-only. 4 new tests (17 total in the file).
+  Also dropped dead `budgetCacheKey` field. Backlog items 1 and 3 done.
 
 ### 2026-10-22 — overnight: 3 features (all pushed to `application/main`)
 
@@ -46,20 +55,17 @@ llm 2315 (2297 pass), renderer 156/156, typecheck 0, vite + esbuild OK.
 
 ## Next (ordered backlog)
 
-1. **Budget warning must reach the user.** Currently `UsageLedger.guardAdvice`
-   only logs to the main-process console. Add a one-way IPC event
-   (`usage-ledger:budget-warning`, deduped per month/threshold) and a small
-   renderer toast. No flag, additive. Tests: pure dedupe helper.
-2. **README "What's new".** Short section for Insights / AI usage / Safe copy
+1. **README "What's new".** Short section for Insights / AI usage / Safe copy
    with one screenshot each if cheap (can reuse existing assets or skip).
-3. **Chore(usage):** drop dead `budgetCacheKey` field in `UsageLedger.ts`
-   (leftover from early draft, unused).
-4. **Insights coverage nudge:** in MeetingDetails Insights tab, show
+2. **Insights coverage nudge:** in MeetingDetails Insights tab, show
    "transcript coverage" (usableTurns / turns) when < 100% so users understand
    limited-data verdicts. Pure UI, no IPC.
-5. **Safe copy for follow-up draft?** Deferred: redacting a message you are
+3. **Usage ledger refresh:** the AI usage card only loads on mount; refresh
+   when a meeting ends (event already exists: `onMeetingsUpdated`) so totals
+   are current right after a session.
+4. **Safe copy for follow-up draft?** Deferred: redacting a message you are
    about to send removes useful context (names). Only if user asks.
-6. **origin fork sync** — waiting on user decision. Do not touch.
+5. **origin fork sync** — waiting on user decision. Do not touch.
 
 ## Decisions log
 
