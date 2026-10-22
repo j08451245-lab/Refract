@@ -12,6 +12,7 @@ import {
   estimateTokens,
   currentMonthKey,
   makeEmptyStatsBucket,
+  budgetAdvisoryKey,
 } from '../../../dist-electron/electron/intelligence/UsageLedger.js';
 
 function tmpDir(label) {
@@ -172,5 +173,42 @@ describe('UsageLedger â€” resilience + rotation + helpers', () => {
     const key = currentMonthKey(new Date(2026, 3, 7).getTime());
     assert.equal(key, '2026-04');
     assert.equal(currentMonthKey(new Date('not-a-date').getTime()), 'NaN-NaN');
+  });
+});
+
+describe('UsageLedger — budget advisory dedupe key', () => {
+  const base = { enabled: true, monthKey: '2026-10', warnAtPct: 80, shouldWarn: false, exceeded: false };
+
+  test('disabled/null/malformed → null (never notifies)', () => {
+    assert.equal(budgetAdvisoryKey(null), null);
+    assert.equal(budgetAdvisoryKey(undefined), null);
+    assert.equal(budgetAdvisoryKey({ enabled: false }), null);
+    assert.equal(budgetAdvisoryKey({}), null);
+    assert.equal(budgetAdvisoryKey({ enabled: true, monthKey: '2026-10' }), null);
+  });
+
+  test('warn and exceeded are distinct stable keys', () => {
+    const warn = budgetAdvisoryKey({ ...base, shouldWarn: true });
+    const exceeded = budgetAdvisoryKey({ ...base, shouldWarn: true, exceeded: true });
+    assert.equal(warn, '2026-10:warn:80');
+    assert.equal(exceeded, '2026-10:exceeded');
+    assert.notEqual(warn, exceeded);
+  });
+
+  test('month rollover changes the key (new month notifies again)', () => {
+    assert.notEqual(
+      budgetAdvisoryKey({ ...base, shouldWarn: true, monthKey: '2026-10' }),
+      budgetAdvisoryKey({ ...base, shouldWarn: true, monthKey: '2026-11' }),
+    );
+  });
+
+  test('integrated: status → advisory key only after threshold, stable across calls', () => {
+    const dir = tmpDir('advisory');
+    const led = new UsageLedger({ dir });
+    led.setBudget(100, 80);
+    led.recordUsage({ ...REC(), ts: Date.now(), inputChars: 1200, outputChars: 0 });
+    const k1 = budgetAdvisoryKey(led.budgetStatus());
+    const k2 = budgetAdvisoryKey(led.budgetStatus());
+    assert.ok(k1 && k1 === k2 && k1.endsWith(':exceeded'));
   });
 });

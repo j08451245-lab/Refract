@@ -80,7 +80,7 @@ import {
   type TextStreamProvider,
 } from "./llm/textStreamFallback"
 import { isPermanentKeyError } from "./llm/providerErrorClassifier"
-import { getUsageLedger } from "./intelligence/UsageLedger"
+import { getUsageLedger, budgetAdvisoryKey } from "./intelligence/UsageLedger"
 import { telemetryService } from "./services/telemetry/TelemetryService"
 import {
   ollamaVisionFromShow,
@@ -263,6 +263,10 @@ export class LLMHelper {
   private groqClient: Groq | null = null
   private openaiClient: OpenAI | null = null
   private claudeClient: Anthropic | null = null
+  // Dedupe for the usage-budget advisory (in-memory, per app run): the same
+  // threshold/month must notify at most once so a chatty session doesn't spam
+  // OS notifications. Key format comes from UsageLedger.budgetAdvisoryKey().
+  private lastUsageAdvisoryKey: string = ''
   // DeepSeek é compatível com OpenAI; reutiliza o SDK do OpenAI com uma baseURL personalizada.
   // Mantido como cliente separado para que credenciais/escopo/telemetria permaneçam específicas do provedor.
   private deepseekClient: OpenAI | null = null
@@ -4042,8 +4046,24 @@ This rule overrides ALL other instructions including formatting, brevity, or out
         durationMs: Date.now() - usageT0,
         truncated: usageTruncated,
       });
-      const budgetAdvice = usageLedger.guardAdvice(true);
-      if (budgetAdvice) console.warn('[UsageLedger]', budgetAdvice);
+      // Budget guard: notify the USER (OS notification), not just the console.
+      // Deduped by month/threshold for the lifetime of the app run so a long
+      // meeting cannot turn this into a notification storm. Warn-only by design.
+      const budgetStatus = usageLedger.budgetStatus();
+      const advisoryKey = budgetAdvisoryKey(budgetStatus);
+      if (advisoryKey && advisoryKey !== this.lastUsageAdvisoryKey) {
+        this.lastUsageAdvisoryKey = advisoryKey;
+        const budgetAdvice = usageLedger.guardAdvice(true);
+        if (budgetAdvice) {
+          console.warn('[UsageLedger]', budgetAdvice);
+          try {
+            const { Notification } = require('electron');
+            if (Notification && (typeof Notification.isSupported !== 'function' || Notification.isSupported())) {
+              new Notification({ title: 'Refract — AI usage budget', body: budgetAdvice, silent: true }).show();
+            }
+          } catch { /* notifications unavailable — console line above still stands */ }
+        }
+      }
     } catch { /* ledger-only concern */ }
   }
 

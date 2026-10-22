@@ -4,9 +4,9 @@
 // electron import (node-testable); every operation is guarded and degrades to
 // a disabled ledger on any fs failure. Stores one JSONL record per LLM stream
 // turn, plus a tiny budget.json for the monthly token budget. All token
-// counts are ESTIMATES (chars/4 — no provider returns reliable usage on local
+// counts are ESTIMATES (chars/4 â€” no provider returns reliable usage on local
 // providers); inputChars/4, outputChars/4 heuristic is documented in the
-// report. Records contain no prompt or answer text — only counts, provider,
+// report. Records contain no prompt or answer text â€” only counts, provider,
 // model, task label, timing.
 
 import fs from 'fs';
@@ -77,6 +77,22 @@ export function currentMonthKey(ts: number = Date.now()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/**
+ * Stable key for the CURRENT advisory state. Empty/unchanged means "don't notify":
+ * - disabled budget â†’ null
+ * - exceeded â†’ "<month>:exceeded"
+ * - warn threshold crossed â†’ "<month>:warn:<pct>"
+ * Consumers dedupe on this string (e.g. notify at most once per month/threshold
+ * per run). Pure; safe with malformed input.
+ */
+export function budgetAdvisoryKey(status: Partial<BudgetStatus> | null | undefined): string | null {
+  if (!status || status.enabled !== true) return null;
+  const month = typeof status.monthKey === 'string' && status.monthKey ? status.monthKey : 'unknown';
+  if (status.exceeded === true) return `${month}:exceeded`;
+  if (status.shouldWarn === true) return `${month}:warn:${Number(status.warnAtPct) || 80}`;
+  return null;
+}
+
 function emptyStats(windowMs: number): UsageStats {
   return {
     windowMs,
@@ -94,7 +110,6 @@ export class UsageLedger {
   private disabled = false;
   private budgetCache: { monthlyTokenBudget: number; warnAtPct: number } | null = null;
   private budgetCacheTs = 0;
-  private budgetCacheKey = '';
 
   constructor(options: UsageLedgerOptions = {}) {
     this.rotateBytes = typeof options.rotateBytes === 'number' && options.rotateBytes >= 0 ? Math.min(options.rotateBytes, 1024 * 1024 * 1024) : DEFAULT_ROTATE_BYTES;
@@ -168,7 +183,7 @@ export class UsageLedger {
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
       fs.renameSync(recPath, `${recPath}.${stamp}.bak`);
     } catch {
-      /* missing file or rename race — safe to continue */
+      /* missing file or rename race â€” safe to continue */
     }
   }
 
@@ -202,7 +217,7 @@ export class UsageLedger {
           });
         }
       } catch {
-        /* malformed line — skip */
+        /* malformed line â€” skip */
       }
     }
   }
@@ -245,7 +260,6 @@ export class UsageLedger {
       fs.writeFileSync(bp, JSON.stringify({ monthlyTokenBudget: budget, warnAtPct: warn, savedAt: Date.now() }), 'utf8');
       this.budgetCache = { monthlyTokenBudget: budget, warnAtPct: warn };
       this.budgetCacheTs = Date.now();
-      this.budgetCacheKey = '';
       return true;
     } catch {
       return false;
@@ -265,12 +279,10 @@ export class UsageLedger {
         warnAtPct: Math.max(1, Math.min(99, Math.round(Number(parsed?.warnAtPct) || 80))),
       };
       this.budgetCacheTs = now;
-      this.budgetCacheKey = '';
       return this.budgetCache;
     } catch {
       this.budgetCache = { monthlyTokenBudget: 0, warnAtPct: 80 };
       this.budgetCacheTs = now;
-      this.budgetCacheKey = '';
       return this.budgetCache;
     }
   }
