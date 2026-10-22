@@ -168,6 +168,18 @@ const AIUsageCard: React.FC = () => {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Keep totals fresh right after a meeting is processed (the ledger is written
+  // by the chat funnel while notes are generated). Falls back to mount-only
+  // when the event is unavailable.
+  useEffect(() => {
+    try {
+      const unsubscribe = window.electronAPI?.onMeetingsUpdated?.(() => { void load(); });
+      return () => { try { unsubscribe?.(); } catch { /* swallow */ } };
+    } catch {
+      return undefined;
+    }
+  }, [load]);
+
   const saveBudget = useCallback(async () => {
     setSaveBusy(true);
     try {
