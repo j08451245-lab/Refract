@@ -22,6 +22,9 @@ Last updated: 2026-10-22 (night cycle, after autonomy setup)
 - `cd5f8f6` feat(insights): transcript coverage line when usableTurns < turns.
 - `e8fd81d` feat(privacy): CNPJ detector (mod-11 DV) in safe copy, masked + bare,
   invalid patterns survive. 15 tests in the file.
+- `41ce0e4` review fixes: single ledger scan per turn (`budgetAdviceText`),
+  advisory latch clears when the budget is disabled/raised, locale-independent
+  tests. Intelligence suite: 547 pass / 9 todo.
 
 ### 2026-10-22 — overnight: 3 features (all pushed to `application/main`)
 
