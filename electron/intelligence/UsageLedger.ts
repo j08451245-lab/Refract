@@ -93,6 +93,18 @@ export function budgetAdvisoryKey(status: Partial<BudgetStatus> | null | undefin
   return null;
 }
 
+/**
+ * Human-readable advisory for an ALREADY-COMPUTED status (pure). Callers that
+ * also need the dedupe key can derive it from the same status and avoid a
+ * second full ledger scan (budgetStatus reads the JSONL synchronously).
+ */
+export function budgetAdviceText(status: BudgetStatus | null | undefined, notifyWarn: boolean = true): string | null {
+  if (!status || status.enabled !== true) return null;
+  if (status.exceeded) return `Monthly AI token budget exceeded (${status.usedTokensThisMonth.toLocaleString()} / ${status.monthlyTokenBudget.toLocaleString()} tokens).`;
+  if (notifyWarn && status.shouldWarn) return `AI token budget at ${status.pctUsed}% for this month.`;
+  return null;
+}
+
 function emptyStats(windowMs: number): UsageStats {
   return {
     windowMs,
@@ -322,11 +334,7 @@ export class UsageLedger {
   /** Post-write check convenience: returns non-empty advisory string or null. */
   public guardAdvice(notifyWarn: boolean = true): string | null {
     try {
-      const st = this.budgetStatus();
-      if (!st.enabled) return null;
-      if (st.exceeded) return `Monthly AI token budget exceeded (${st.usedTokensThisMonth.toLocaleString()} / ${st.monthlyTokenBudget.toLocaleString()} tokens).`;
-      if (notifyWarn && st.shouldWarn) return `AI token budget at ${st.pctUsed}% for this month.`;
-      return null;
+      return budgetAdviceText(this.budgetStatus(), notifyWarn);
     } catch {
       return null;
     }

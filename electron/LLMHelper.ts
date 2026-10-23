@@ -80,7 +80,7 @@ import {
   type TextStreamProvider,
 } from "./llm/textStreamFallback"
 import { isPermanentKeyError } from "./llm/providerErrorClassifier"
-import { getUsageLedger, budgetAdvisoryKey } from "./intelligence/UsageLedger"
+import { getUsageLedger, budgetAdvisoryKey, budgetAdviceText } from "./intelligence/UsageLedger"
 import { telemetryService } from "./services/telemetry/TelemetryService"
 import {
   ollamaVisionFromShow,
@@ -4049,11 +4049,12 @@ This rule overrides ALL other instructions including formatting, brevity, or out
       // Budget guard: notify the USER (OS notification), not just the console.
       // Deduped by month/threshold for the lifetime of the app run so a long
       // meeting cannot turn this into a notification storm. Warn-only by design.
+      // One ledger scan per turn (budgetStatus is synchronous file I/O).
       const budgetStatus = usageLedger.budgetStatus();
       const advisoryKey = budgetAdvisoryKey(budgetStatus);
       if (advisoryKey && advisoryKey !== this.lastUsageAdvisoryKey) {
         this.lastUsageAdvisoryKey = advisoryKey;
-        const budgetAdvice = usageLedger.guardAdvice(true);
+        const budgetAdvice = budgetAdviceText(budgetStatus);
         if (budgetAdvice) {
           console.warn('[UsageLedger]', budgetAdvice);
           try {
@@ -4063,6 +4064,10 @@ This rule overrides ALL other instructions including formatting, brevity, or out
             }
           } catch { /* notifications unavailable — console line above still stands */ }
         }
+      } else if (!advisoryKey) {
+        // Budget disabled/raised below warning: clear the latch so a future
+        // crossing (even in the same month) can notify again.
+        this.lastUsageAdvisoryKey = '';
       }
     } catch { /* ledger-only concern */ }
   }

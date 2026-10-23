@@ -13,6 +13,7 @@ import {
   currentMonthKey,
   makeEmptyStatsBucket,
   budgetAdvisoryKey,
+  budgetAdviceText,
 } from '../../../dist-electron/electron/intelligence/UsageLedger.js';
 
 function tmpDir(label) {
@@ -210,5 +211,20 @@ describe('UsageLedger — budget advisory dedupe key', () => {
     const k1 = budgetAdvisoryKey(led.budgetStatus());
     const k2 = budgetAdvisoryKey(led.budgetStatus());
     assert.ok(k1 && k1 === k2 && k1.endsWith(':exceeded'));
+  });
+
+  test('budgetAdviceText is pure and mirrors guardAdvice wording', () => {
+    const base = {
+      enabled: true, monthKey: '2026-10', monthlyTokenBudget: 1000, usedTokensThisMonth: 1200,
+      pctUsed: 120, exceeded: true, warnAtPct: 80, shouldWarn: true,
+    };
+    assert.equal(budgetAdviceText(null), null);
+    assert.equal(budgetAdviceText({ ...base, enabled: false }), null);
+    const over = budgetAdviceText(base);
+    assert.ok(over && /^Monthly AI token budget exceeded \(/.test(over)); // separators are locale-dependent
+    const warn = budgetAdviceText({ ...base, exceeded: false, usedTokensThisMonth: 850, pctUsed: 85 });
+    assert.equal(warn, 'AI token budget at 85% for this month.');
+    assert.equal(budgetAdviceText({ ...base, exceeded: false, pctUsed: 85 }, false), null);
+    assert.equal(budgetAdviceText({ ...base, exceeded: false, shouldWarn: false, pctUsed: 20 }), null);
   });
 });
